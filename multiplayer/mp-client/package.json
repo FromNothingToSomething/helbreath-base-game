@@ -20,7 +20,7 @@
         "typescript"
     ],
     "scripts": {
-        "proto:generate": "mkdir -p src/proto/generated && grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/proto/generated --ts_proto_opt=esModuleInterop=true,env=browser,forceLong=bigint,oneof=unions-value,outputServices=none,outputJsonMethods=false ../proto/network.proto --proto_path=../proto",
+        "proto:generate": "mkdir -p src/proto/generated && grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/proto/generated --ts_proto_opt=esModuleInterop=true,env=browser,forceLong=bigint,oneof=unions-value,outputServices=none,outputJsonMethods=false ../proto/network.proto ../proto/nocthemar.proto --proto_path=../proto",
         "predev": "pnpm run proto:generate",
         "dev": "sh -c 'for p in 8080; do lsof -iTCP:$p -sTCP:LISTEN -t 2>/dev/null | xargs kill -9 2>/dev/null; done; exec vite --config vite/config.dev.mjs'",
         "prebuild": "pnpm run proto:generate",

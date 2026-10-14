@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "proto:generate": "mkdir -p ../multiplayer/mp-client/src/proto/generated && grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=../multiplayer/mp-client/src/proto/generated --ts_proto_opt=esModuleInterop=true,env=browser,forceLong=bigint,oneof=unions-value,outputServices=none,outputJsonMethods=false ../multiplayer/proto/network.proto --proto_path=../multiplayer/proto",
+    "proto:generate": "mkdir -p ../multiplayer/mp-client/src/proto/generated && grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=../multiplayer/mp-client/src/proto/generated --ts_proto_opt=esModuleInterop=true,env=browser,forceLong=bigint,oneof=unions-value,outputServices=none,outputJsonMethods=false ../multiplayer/proto/network.proto ../multiplayer/proto/nocthemar.proto --proto_path=../multiplayer/proto",
     "client-simulator": "pnpm run proto:generate && node --import tsx ./client-simulator.ts"
   },
   "dependencies": {

@@ -39,7 +39,7 @@ The client dev server runs at **http://localhost:8080** (same as single-player).
 
 | Command | Description |
 |---------|-------------|
-| `pnpm proto:generate` | Regenerate `src/proto/generated/network.ts` from `../proto/network.proto` |
+| `pnpm proto:generate` | Regenerate `src/proto/generated/network.ts` and `nocthemar.ts` from `../proto/network.proto` and `../proto/nocthemar.proto` |
 | `pnpm dev` | Runs `proto:generate`, frees port 8080 if in use, then starts Vite (`vite/config.dev.mjs`) |
 | `pnpm build` | Runs `proto:generate`, then production build → `multiplayer/mp-client/dist` |
 | `pnpm dev-nolog` / `pnpm build-nolog` | Same as `dev` / `build` without the pre-script hooks (skip proto step if you know generated files are current) |
@@ -64,7 +64,7 @@ The layout mirrors [`sp-client`](../../sp-client) (`src/game`, `src/constants`, 
 
 ```
 multiplayer/mp-client/src/
-├── proto/generated/     # Generated from ../proto/network.proto (do not edit by hand)
+├── proto/generated/     # Generated from ../proto/network.proto + nocthemar.proto (do not edit by hand)
 ├── utils/NetworkManager.ts   # WebSocket + protobuf bridge to EventBus
 └── ui/ ...                # Connect, Chat, Server, Death, etc. (see App.tsx)
 ```
