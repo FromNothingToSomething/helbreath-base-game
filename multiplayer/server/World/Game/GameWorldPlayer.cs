@@ -437,6 +437,9 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         return true;
     }
 
+    /// <summary>Weapon damage after the player's <see cref="StatId.DamageMult"/> modifiers; equals <see cref="Damage"/> when there are none.</summary>
+    public int ComputeAttackDamage() => stats.ComputeDamage(damage);
+
     /// <summary>Snapshot of the persisted NOCTHEMAR block with the live mana.</summary>
     public NocState CreateNocState() => noc with { Mana = mana };
 

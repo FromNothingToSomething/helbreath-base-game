@@ -453,7 +453,7 @@ public static class Casting {
                         group,
                         tickRateMs,
                         durationMs,
-                        caster.Damage,
+                        caster.ComputeAttackDamage(),
                         resolvedAttackType,
                         out var createdEffect) ||
                     createdEffect is null) {
