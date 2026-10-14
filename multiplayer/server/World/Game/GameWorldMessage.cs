@@ -1,5 +1,6 @@
 using Server;
 using Server.Nocthemar.Core;
+using Server.Nocthemar.Net;
 using Mmorpg.Network;
 
 namespace Server.World.Game;
@@ -77,7 +78,9 @@ public sealed record PlayerConnectedMessage(
     PlayerPersistenceState? PersistedState,
     string CharacterName,
     /// <summary>Clears pending logout and notifies client when combat damage cancels a timed logout.</summary>
-    Action InterruptLogoutDueToCombat) : GameWorldMessage;
+    Action InterruptLogoutDueToCombat,
+    /// <summary>T30: validated creation choice of a character that has no save; null otherwise.</summary>
+    NewCharacterChoice? NewCharacter = null) : GameWorldMessage;
 
 /// <summary>Existing in-world player attached a new socket after disconnect grace.</summary>
 public sealed record PlayerReconnectedMessage(

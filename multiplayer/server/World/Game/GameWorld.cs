@@ -497,6 +497,8 @@ public sealed class GameWorld : IWorkerWorld {
         player.SetCharacterName(connectedMessage.CharacterName);
         if (connectedMessage.PersistedState is not null) {
             player.ApplyPersistedState(connectedMessage.PersistedState);
+        } else if (connectedMessage.NewCharacter is not null) {
+            player.ApplyNewCharacter(connectedMessage.NewCharacter);
         }
         Console.WriteLine($"[GameWorld:{id}] Player connected. Players on world: {playersBySessionId.Count}");
         Spawn.CompletePlayerJoin(gameWorldRef, player, includeSpellsInInitialState: true);

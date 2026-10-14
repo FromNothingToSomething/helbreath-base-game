@@ -46,7 +46,24 @@ public sealed class RaceAppearance {
     public IReadOnlyCollection<int> UnderwearColors => underwearColors;
 
     public bool Allows(int gender, int skinColor, int hairStyle, int underwearColor) =>
-        genders.Contains(gender) && skinColors.Contains(skinColor) && hairStyles.Contains(hairStyle) && underwearColors.Contains(underwearColor);
+        FirstViolation(gender, skinColor, hairStyle, underwearColor) is null;
+
+    /// <summary>Name of the first axis whose value is not allowed (<c>gender</c>, <c>skin_color</c>, <c>hair_style_index</c>, <c>underwear_color_index</c>), or null when all are.</summary>
+    public string? FirstViolation(int gender, int skinColor, int hairStyle, int underwearColor) {
+        if (!genders.Contains(gender)) {
+            return "gender";
+        }
+
+        if (!skinColors.Contains(skinColor)) {
+            return "skin_color";
+        }
+
+        if (!hairStyles.Contains(hairStyle)) {
+            return "hair_style_index";
+        }
+
+        return underwearColors.Contains(underwearColor) ? null : "underwear_color_index";
+    }
 }
 
 /// <param name="Native">True when the race has its own sprites; false means human sprites tinted with <paramref name="Tint"/> (see <paramref name="Todo"/>).</param>

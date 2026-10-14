@@ -4,6 +4,7 @@ using Mmorpg.Network;
 using Server.Helpers;
 using Server.Nocthemar.Core;
 using Server.Nocthemar.Data;
+using Server.Nocthemar.Net;
 using Server.Utils;
 using Server.World;
 
@@ -376,6 +377,18 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         ApplyNocState(progressionService.Normalize(null));
         hp = maxHp;
         mana = stats.MaxMana; // a new character starts with full mana, whatever its race does to the maximum
+    }
+
+    /// <summary>
+    /// T30: applies the creation choice of a brand-new character before it joins: race, appearance, and full HP and mana for that race.
+    /// Not marked dirty: the join snapshot carries the final state. An id that is not listed falls back to the default race.
+    /// </summary>
+    public void ApplyNewCharacter(NewCharacterChoice choice) {
+        ArgumentNullException.ThrowIfNull(choice);
+        ApplyRaceCore(races.TryGet(choice.RaceId, out var chosen) ? chosen : races.Default);
+        SetAppearance(choice.Gender, choice.SkinColor, choice.HairStyleIndex, choice.UnderwearColorIndex);
+        hp = maxHp;
+        mana = stats.MaxMana;
     }
 
     /// <summary>Id of the player's race (<c>Races.json</c>); always a listed race.</summary>

@@ -10,6 +10,7 @@ using Mmorpg.Network;
 using Server;
 using Server.Nocthemar.Core;
 using Server.Nocthemar.Data;
+using Server.Nocthemar.Net;
 using Server.Nocthemar.Persistence;
 using Server.World;
 using Server.World.Game;
@@ -257,6 +258,7 @@ app.Map("/ws", async context => {
 
                 var session = authenticatedSession ?? throw new InvalidOperationException("Authenticated session was not created.");
                 PlayerPersistenceState? loadedPlayerState = null;
+                NewCharacterChoice? newCharacter = null;
                 if (!isReconnect) {
                     string? loadRefusal;
                     (loadedPlayerState, loadRefusal) = await CharacterAccess.TryLoadAsync(characterStore, session.NetworkId, receiveCts.Token, races: races);
@@ -268,6 +270,18 @@ app.Map("/ws", async context => {
                         RequestDisconnect(loadRefusal);
                         return;
                     }
+
+                    // T30: the creation block only counts for a character without a save; an existing save ignores it.
+                    var creationResult = CharacterCreationService.Resolve(clientMessage.AuthenticateRequest.Creation, loadedPlayerState is not null, races);
+                    if (creationResult.Refusal is not null) {
+                        sessionsByNetworkId.TryRemove(new KeyValuePair<string, PlayerSession>(session.NetworkId, session));
+                        sessionsByServerId.TryRemove(new KeyValuePair<Guid, PlayerSession>(session.SessionId, session));
+                        authenticatedSession = null;
+                        RequestDisconnect(creationResult.Refusal);
+                        return;
+                    }
+
+                    newCharacter = creationResult.Choice;
 
                     if (loadedPlayerState is not null) {
                         var (resolvedGameWorldId, resolvedPlayerState) = ResolveLoadedPlayerJoin(
@@ -297,7 +311,8 @@ app.Map("/ws", async context => {
                         RequestWorldChange,
                         loadedPlayerState,
                         session.CharacterName,
-                        CreateInterruptLogoutDueToCombat(session));
+                        CreateInterruptLogoutDueToCombat(session),
+                        newCharacter);
                 GlobalWorldMessage globalWorldMessage = isReconnect
                     ? new GlobalPlayerReconnectedMessage(session.SessionId, EnqueueOutgoingMessage, session.CharacterName)
                     : new GlobalPlayerConnectedMessage(session.SessionId, EnqueueOutgoingMessage, session.CharacterName);
