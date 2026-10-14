@@ -478,6 +478,71 @@ public class GameWorldPlayer : GameWorldActionableEntity {
     /// <summary>Handlers of the learned skills by hook; null when the world has no class content.</summary>
     internal SkillHookTable? SkillHookSet => skillEffects?.Hooks;
 
+    private readonly Dictionary<int, long> skillReadyAtMs = [];
+
+    /// <summary>The learned skill with this id, or null.</summary>
+    internal SkillDefinition? FindLearnedSkill(int skillId) {
+        if (skillService is null || skillId < SkillIds.Base || !skillService.IsLearned(noc, skillId) || !skillService.Skills.TryGet(skillId, out var skill)) {
+            return null;
+        }
+
+        return skill;
+    }
+
+    /// <summary>Mana a cast of <paramref name="skill"/> costs this player: <see cref="SkillDefinition.ManaCost"/> x <see cref="StatId.ManaCostMult"/>, rounded half away from zero.</summary>
+    public int ManaCostOf(SkillDefinition skill) {
+        ArgumentNullException.ThrowIfNull(skill);
+        return skill.ManaCost <= 0 ? 0 : (int)Math.Min(int.MaxValue, Math.Round(skill.ManaCost * stats.Get(StatId.ManaCostMult), MidpointRounding.AwayFromZero));
+    }
+
+    /// <summary>Why <paramref name="skillId"/> cannot be cast right now (nothing is changed), or null when it can.</summary>
+    public string? SkillCastRefusal(int skillId, long nowMs) {
+        if (skillService is null) {
+            return "Classes are not available.";
+        }
+
+        if (IsDead) {
+            return "You are dead.";
+        }
+
+        var skill = FindLearnedSkill(skillId);
+        if (skill is null) {
+            return "Skill not learned.";
+        }
+
+        if (skill.Kind == SkillKind.Passive || !skill.IsReady || skill.Handler is null) {
+            return "This skill cannot be cast.";
+        }
+
+        if (skillReadyAtMs.TryGetValue(skillId, out var readyAt) && nowMs < readyAt) {
+            return "Skill is on cooldown.";
+        }
+
+        return mana < ManaCostOf(skill) ? "Not enough mana." : null;
+    }
+
+    /// <summary>
+    /// Casts a learned active skill: checks (see <see cref="SkillCastRefusal"/>), runs its OnCast handler, then spends the mana and starts the cooldown.
+    /// A handler refusal spends nothing. Returns the refusal, or null on success.
+    /// </summary>
+    public string? TryBeginSkillCast(int skillId, long nowMs, int? targetId = null) {
+        var refusal = SkillCastRefusal(skillId, nowMs);
+        if (refusal is not null) {
+            return refusal;
+        }
+
+        var skill = FindLearnedSkill(skillId)!;
+        var result = skillEffects!.Hooks.RunSkill(skillId, SkillHook.OnCast, PlayerId, targetId, nowMs);
+        if (!result.Success) {
+            return result.Refusal ?? "The skill failed.";
+        }
+
+        mana = Math.Max(0, mana - ManaCostOf(skill));
+        skillReadyAtMs[skillId] = nowMs + Math.Max(0, skill.CooldownMs);
+        nocDirty = true;
+        return null;
+    }
+
     /// <summary>Counts a monster kill (saturating); persisted, not sent to the client.</summary>
     public void RegisterKill() {
         if (noc.Kills < int.MaxValue) {

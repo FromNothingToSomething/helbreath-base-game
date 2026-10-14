@@ -32,6 +32,11 @@ public static class Casting {
         if (player.IsDead) {
             return;
         }
+        if (request.SpellId >= SkillIds.Base) {
+            StartSkillCast(wr, player, request.SpellId);
+            return;
+        }
+
         if (!spellsById.TryGetValue(request.SpellId, out var spell)) {
             return;
         }
@@ -48,6 +53,53 @@ public static class Casting {
         foreach (var nearbyPlayer in wr.PlayerSpatialGrid.GetNearbyPlayers(player.PosX, player.PosY, player.SessionId)) {
             NetworkManager.SendToPlayer(nearbyPlayer, startedMessage);
         }
+    }
+
+    private static void RefuseSkillCast(GameWorldPlayer player, string reason) {
+        player.ClearRequestedSpell();
+        NetworkManager.SendToPlayer(player, NetworkManager.CreateNocActionRefused(reason));
+        NetworkManager.SendToPlayer(player, NetworkManager.CreateSpellCastFailed());
+    }
+
+    /// <summary>Class skills (id >= <see cref="SkillIds.Base"/>) are cast through the spell messages: the start request validates the skill without spending anything.</summary>
+    private static void StartSkillCast(GameWorldRef wr, GameWorldPlayer player, int skillId) {
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var refusal = player.SkillCastRefusal(skillId, nowMs);
+        if (refusal is not null) {
+            RefuseSkillCast(player, refusal);
+            return;
+        }
+
+        if (player.SpawnProtection) {
+            Spawn.DisableSpawnProtectionAndNotify(wr, player);
+        }
+
+        TemporaryEffects.BreakInvisibilityIfPresent(wr, player);
+        player.SetRequestedSpellId(skillId);
+        player.RecordSpellCastStartTimeMs(nowMs);
+        var startedMessage = NetworkManager.CreateSpellCastStarted(player.PlayerId, player.FindLearnedSkill(skillId)!.Name, player.CastSpeedMs);
+        foreach (var nearbyPlayer in wr.PlayerSpatialGrid.GetNearbyPlayers(player.PosX, player.PosY, player.SessionId)) {
+            NetworkManager.SendToPlayer(nearbyPlayer, startedMessage);
+        }
+    }
+
+    /// <summary>Completes a class skill cast: same timing rule as spells, then cooldown, mana and the skill's handler (<see cref="GameWorldPlayer.TryBeginSkillCast"/>).</summary>
+    private static void CastSkill(GameWorldRef wr, GameWorldPlayer player) {
+        var skillId = player.RequestedSpellId!.Value;
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        if (player.IsSpellCastTimingViolation(nowMs, out _, out _)) {
+            RefuseSkillCast(player, "Cast too quick.");
+            return;
+        }
+
+        player.ClearRequestedSpell();
+        var refusal = player.TryBeginSkillCast(skillId, nowMs);
+        if (refusal is not null) {
+            RefuseSkillCast(player, refusal);
+            return;
+        }
+
+        TemporaryEffects.BreakInvisibilityIfPresent(wr, player);
     }
 
     /// <summary>Cancels the current requested spell, if any, and fans out cast-cancel visuals to nearby players.</summary>
@@ -86,6 +138,11 @@ public static class Casting {
             NetworkManager.SendToPlayer(player, NetworkManager.CreateSpellCastFailed());
             return;
         }
+        if (player.RequestedSpellId.Value >= SkillIds.Base) {
+            CastSkill(wr, player);
+            return;
+        }
+
         if (!spellsById.TryGetValue(player.RequestedSpellId.Value, out var spell)) {
             player.ClearRequestedSpell();
             return;

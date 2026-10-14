@@ -33,7 +33,7 @@ public enum StatId : byte {
     HealReceivedMult = 12,
     // consumer: module 2 (T27, XP of kills)
     XpGainMult = 13,
-    // consumer: module 4
+    // consumer: module 3 (T48, mana cost of class skills)
     ManaCostMult = 14,
     // consumer: module 4
     MimicDurationMult = 15,
