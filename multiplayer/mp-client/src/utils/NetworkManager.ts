@@ -59,7 +59,8 @@ import {
     WeatherChanged,
     WeatherMode as WeatherModeProto,
 } from '../proto/generated/network';
-import type { NocSnapshot } from '../proto/generated/nocthemar';
+import type { NocCharacterCreation, NocSnapshot } from '../proto/generated/nocthemar';
+import { encodeAuthenticateRequest } from './Authentication';
 import { toNocViewModel } from './NocView';
 import { EventBus, type ToastRequestedEvent } from '../game/EventBus';
 import { LOAD_PLAYER_ITEM_APPEARANCE_ASSETS_ON_DEMAND } from '../Config';
@@ -419,6 +420,7 @@ export class NetworkManager {
     private npcDirectoryByCatalogId = new Map<number, string>();
     private spells: SpellEntry[] = [];
     private authenticateCharacterName = '';
+    private authenticateCreation: NocCharacterCreation | undefined;
     private hasSentAuthentication = false;
     private logoutPending = false;
     private logoutIntervalId: ReturnType<typeof setInterval> | undefined;
@@ -458,10 +460,11 @@ export class NetworkManager {
     constructor(private readonly networkId: string) {
     }
 
-    public connect(ip: string, port: number, characterName: string): Promise<void> {
+    public connect(ip: string, port: number, characterName: string, creation?: NocCharacterCreation): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
                 this.authenticateCharacterName = characterName.trim();
+                this.authenticateCreation = creation;
                 const websocketUrl = `ws://${ip}:${port}/ws`;
                 const socket = new WebSocket(websocketUrl);
                 socket.binaryType = 'arraybuffer';
@@ -524,6 +527,7 @@ export class NetworkManager {
                         this.monsters = [];
                         this.spells = [];
                         this.authenticateCharacterName = '';
+                        this.authenticateCreation = undefined;
                         this.hasSentAuthentication = false;
                         this.logoutPending = false;
                         this.clearLogoutCountdown();
@@ -1133,15 +1137,7 @@ export class NetworkManager {
 
     private sendAuthentication(): void {
         this.hasSentAuthentication = true;
-        const command = ClientMessage.encode({
-            payload: {
-                $case: 'authenticateRequest',
-                value: {
-                    id: this.networkId,
-                    characterName: this.authenticateCharacterName,
-                },
-            },
-        }).finish();
+        const command = encodeAuthenticateRequest(this.networkId, this.authenticateCharacterName, this.authenticateCreation);
         this.sendPacket(command, true);
     }
 

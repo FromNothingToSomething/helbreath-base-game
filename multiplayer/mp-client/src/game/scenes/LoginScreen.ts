@@ -144,7 +144,7 @@ export class LoginScreen extends Scene {
             setNetworkManager(this.game, networkManager);
 
             try {
-                await networkManager.connect(payload.host, payload.port, payload.characterName);
+                await networkManager.connect(payload.host, payload.port, payload.characterName, payload.creation);
                 this.loginPendingDisconnectHandler = handleSocketDisconnectedDuringLogin;
                 EventBus.on(SOCKET_DISCONNECTED, handleSocketDisconnectedDuringLogin);
             } catch (error) {

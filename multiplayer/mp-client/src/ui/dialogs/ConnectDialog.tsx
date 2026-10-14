@@ -5,6 +5,9 @@ import { RpgButton } from '../components/RpgButton';
 import { EventBus } from '../../game/EventBus';
 import { IN_UI_CONNECT_TO_SERVER, TOAST_REQUESTED } from '../../constants/EventNames';
 import { connectDialogStore, setConnectDialogOpen, setLastConnectAttempt } from '../store/ConnectDialog.store';
+import { CharacterCreationDialog } from './CharacterCreationDialog';
+import { characterCreationStore, getCreationForConnect, setCharacterCreationOpen } from '../store/CharacterCreation.store';
+import { raceName } from '../../constants/Races';
 
 const inputStyle: CSSProperties = {
     width: '100%',
@@ -34,6 +37,7 @@ export function ConnectDialog({
     const [characterName, setCharacterName] = useState('');
     const [host, setHost] = useState('localhost');
     const [portText, setPortText] = useState('1337');
+    const creation = useStore(characterCreationStore, (s) => s);
 
     useEffect(() => {
         if (!isOpen) {
@@ -81,6 +85,7 @@ export function ConnectDialog({
             host: trimmedHost,
             port: portNum,
             characterName: trimmedName,
+            creation: getCreationForConnect(),
         });
     };
 
@@ -143,6 +148,15 @@ export function ConnectDialog({
                         autoComplete="off"
                     />
                 </label>
+                <div style={{ fontSize: '12px' }}>
+                    {creation.enabled
+                        ? `New character: ${raceName(creation.draft.raceId)} (ignored if this character already exists)`
+                        : 'Default race (ignored if this character already exists)'}
+                </div>
+                <RpgButton onClick={() => setCharacterCreationOpen(!creation.isOpen)}>
+                    {creation.isOpen ? 'Hide character creation' : 'Character creation...'}
+                </RpgButton>
+                <CharacterCreationDialog />
                 <div style={{ display: 'flex', justifyContent: 'center', flexShrink: 0, paddingTop: '8px' }}>
                     <RpgButton onClick={handleConnect} style={{ width: '140px' }}>
                         Connect

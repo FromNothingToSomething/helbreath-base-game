@@ -1,4 +1,5 @@
 import { DEBUG_KEY } from "./RegistryKeys";
+import type { NocCharacterCreation } from "../proto/generated/nocthemar";
 
 /** Phaser registry: `changedata-{registryKey}` (see `RegistryKeys.ts`). */
 export const IN_DEBUG_MODE_CHANGE = `changedata-${DEBUG_KEY}`;
@@ -66,6 +67,8 @@ export interface ConnectToServerPayload {
     host: string;
     port: number;
     characterName: string;
+    /** Character creation choice (race and appearance); only used by the server for a character without a save. */
+    creation?: NocCharacterCreation;
 }
 
 /** Emitted when the WebSocket connection is closed (server shutdown, network loss, etc.) */
