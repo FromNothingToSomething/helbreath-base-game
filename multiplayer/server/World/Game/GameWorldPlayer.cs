@@ -5,6 +5,7 @@ using Server.Helpers;
 using Server.Nocthemar.Core;
 using Server.Nocthemar.Data;
 using Server.Nocthemar.Net;
+using Server.Nocthemar.Skills;
 using Server.Utils;
 using Server.World;
 
@@ -48,6 +49,10 @@ public class GameWorldPlayer : GameWorldActionableEntity {
     private readonly ProgressionConfig progression;
     private readonly RaceConfig races;
     private readonly ProgressionService progressionService;
+    /// <summary>Class and skill rules; null when the world runs without class content (no class, no skills).</summary>
+    private readonly SkillService? skillService;
+    /// <summary>Applies the learned skills to <see cref="stats"/> and the hook table; null together with <see cref="skillService"/>.</summary>
+    private readonly SkillEffects? skillEffects;
     /// <summary>Race whose modifiers are currently in <see cref="stats"/> (source <c>ModifierSources.Race</c>); never null after construction.</summary>
     private RaceDefinition race;
     /// <summary>Current mana; clamped to [0, <see cref="MaxMana"/>].</summary>
@@ -209,7 +214,8 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         int pingVarianceSampleSize,
         double antiHackTimingLagFactor,
         ProgressionConfig progression,
-        RaceConfig races) {
+        RaceConfig races,
+        NocContent? nocContent = null) {
         ArgumentNullException.ThrowIfNull(progression);
         ArgumentNullException.ThrowIfNull(races);
         ArgumentNullException.ThrowIfNull(sendMessage);
@@ -229,6 +235,11 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         progressionService = new ProgressionService(progression);
         noc = progressionService.Normalize(null);
         stats = new StatPipeline(progression, noc.Level);
+        if (nocContent is not null) {
+            skillService = nocContent.Rules;
+            skillEffects = new SkillEffects(stats, new SkillHookTable(nocContent.Handlers));
+        }
+
         this.races = races;
         race = races.Default;
         AddRaceModifiers(race);
@@ -437,9 +448,94 @@ public class GameWorldPlayer : GameWorldActionableEntity {
     private void ApplyNocState(NocState state) {
         noc = state with { RaceId = race.Id };
         stats.SetLevel(noc.Level);
+        ApplySkillEffects();
         maxHp = stats.MaxHp;
         hp = Math.Min(hp, maxHp);
         mana = Math.Clamp(noc.Mana, 0, stats.MaxMana);
+    }
+
+    /// <summary>Puts the modifiers and handlers of the learned skills into <see cref="stats"/> and the hook table (replacing the previous ones). Must run before max HP and mana are derived.</summary>
+    private void ApplySkillEffects() {
+        skillEffects?.Apply(skillService!.Learned(noc));
+    }
+
+    /// <summary>Id of the chosen class (<c>Classes.json</c>); null until one is chosen.</summary>
+    public int? ClassId => noc.ClassId;
+
+    /// <summary>Ids of the learned skills in ascending order.</summary>
+    public IReadOnlyList<int> LearnedSkillIds => noc.Skills ?? [];
+
+    /// <summary>Skill points earned at this level and not spent yet; 0 when the world has no class content.</summary>
+    public int SkillPoints => skillService?.PointsAvailable(CreateNocState()) ?? 0;
+
+    /// <summary>Monsters killed by this character.</summary>
+    public int Kills => noc.Kills;
+
+    /// <summary>Handlers of the learned skills by hook; null when the world has no class content.</summary>
+    internal SkillHookTable? SkillHookSet => skillEffects?.Hooks;
+
+    /// <summary>Counts a monster kill (saturating); persisted, not sent to the client.</summary>
+    public void RegisterKill() {
+        if (noc.Kills < int.MaxValue) {
+            noc = noc with { Kills = noc.Kills + 1 };
+        }
+    }
+
+    /// <summary>Chooses the class once. Returns null on success, otherwise the reason shown to the player.</summary>
+    public string? TryChooseClass(int classId) {
+        if (skillService is null) {
+            return NoClassContent;
+        }
+
+        var result = skillService.ChooseClass(CreateNocState(), classId);
+        if (!result.Ok) {
+            return result.Refusal;
+        }
+
+        noc = result.State;
+        nocDirty = true;
+        return null;
+    }
+
+    /// <summary>Learns a skill, then refreshes the stats it changes. Returns null on success, otherwise the reason.</summary>
+    public string? TryLearnSkill(int skillId) {
+        if (skillService is null) {
+            return NoClassContent;
+        }
+
+        var result = skillService.Learn(CreateNocState(), skillId);
+        if (!result.Ok) {
+            return result.Refusal;
+        }
+
+        noc = result.State;
+        RefreshDerivedStats();
+        return null;
+    }
+
+    /// <summary>Debug respec: forgets every skill (the class stays). Returns false when there was nothing to forget or the world has no class content.</summary>
+    public bool Respec() {
+        if (skillService is null || noc.Skills is null) {
+            return false;
+        }
+
+        noc = skillService.Respec(CreateNocState());
+        RefreshDerivedStats();
+        return true;
+    }
+
+    private const string NoClassContent = "Classes are not available.";
+
+    /// <summary>Re-derives max HP and mana after the skills changed; HP and mana are clamped to the new maxima, never raised.</summary>
+    private void RefreshDerivedStats() {
+        var oldMaxHp = maxHp;
+        var oldHp = hp;
+        ApplySkillEffects();
+        maxHp = stats.MaxHp;
+        hp = Math.Min(hp, maxHp);
+        mana = Math.Clamp(mana, 0, stats.MaxMana);
+        nocDirty = true;
+        hpDirty |= maxHp != oldMaxHp || hp != oldHp;
     }
 
     /// <summary>XP credited for a kill worth <paramref name="baseXp"/>: scaled by <see cref="StatId.XpGainMult"/> and rounded half away from zero; 0 for a non-positive base.</summary>
@@ -606,7 +702,16 @@ public class GameWorldPlayer : GameWorldActionableEntity {
             // Absent block (legacy save already migrated, or a state built without one) keeps the level-1 defaults from SetInitialState.
             // Normalize clamps mana to the level's base maximum, i.e. without the race (and any other modifier), which would cut a saved 116/116 down to 110.
             // The race is applied above, so the saved mana goes back in and ApplyNocState clamps it to the real maximum (stats.MaxMana).
-            ApplyNocState(progressionService.Normalize(state.Noc) with { Mana = state.Noc.Mana });
+            var restored = progressionService.Normalize(state.Noc) with { Mana = state.Noc.Mana };
+            if (skillService is not null) {
+                // Class and skills are checked against the catalog and the level; unknown or rule-breaking entries are dropped with a warning, never refused.
+                restored = skillService.Sanitize(restored, out var warnings);
+                foreach (var warning in warnings) {
+                    Console.Error.WriteLine($"[Noc] Character '{characterName}': {warning}.");
+                }
+            }
+
+            ApplyNocState(restored);
             hp = maxHp;
         }
     }

@@ -2,6 +2,7 @@ using Mmorpg.Network;
 using Server;
 using Server.Nocthemar.Core;
 using Server.Nocthemar.Data;
+using Server.Nocthemar.Skills;
 using Server.World.Game;
 
 namespace NocthemarTests;
@@ -17,6 +18,17 @@ internal static class TestSupport {
     /// <summary>The shipped Config/Nocthemar/Skills.json validated against <see cref="ShippedClasses"/>.</summary>
     public static SkillConfig ShippedSkills() => SkillConfig.LoadAsync(ShippedClasses(), Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Skills.json")).GetAwaiter().GetResult();
 
+    /// <summary>The shipped classes and skills with the given handlers (none by default: every shipped skill is a catalog entry or a stat passive).</summary>
+    public static NocContent ShippedContent(SkillHandlerRegistry? handlers = null) =>
+        new(ShippedClasses(), ShippedSkills(), Progression(), handlers ?? new SkillHandlerRegistry());
+
+    /// <summary>Loads a NOCTHEMAR block into a player the way a login does.</summary>
+    public static void Restore(GameWorldPlayer player, NocState noc) {
+        player.ApplyPersistedState(new PlayerPersistenceState(
+            "aresden", 1, 2, 300, 1000, 600, 1, 20, 500, 0, false, false, false,
+            CharacterName: "T", SchemaVersion: CharacterSchema.Current, Noc: noc));
+    }
+
     public static ProgressionConfig Progression() => ProgressionConfig.Parse(ProgressionJson);
 
     /// <summary>One race without any modifier: players built with it behave exactly as before races existed (the default of <see cref="NewPlayer(List{ServerMessage}?, RaceConfig?)"/>).</summary>
@@ -27,7 +39,7 @@ internal static class TestSupport {
     public static RaceConfig ShippedRaces() => RaceConfig.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Races.json")));
 
     /// <summary>A player outside any world, spawned with the level-1 defaults; messages sent to it are appended to <paramref name="sent"/> when given.</summary>
-    public static GameWorldPlayer NewPlayer(List<ServerMessage>? sent = null, RaceConfig? races = null) {
+    public static GameWorldPlayer NewPlayer(List<ServerMessage>? sent = null, RaceConfig? races = null, NocContent? content = null) {
         Action<ServerMessage> send = sent is null ? Discard : sent.Add;
         var player = new GameWorldPlayer(
             Guid.NewGuid(),
@@ -40,7 +52,8 @@ internal static class TestSupport {
             20,
             0.05,
             Progression(),
-            races ?? NeutralRaces());
+            races ?? NeutralRaces(),
+            content);
         player.SetInitialState(5, 6);
         return player;
     }
@@ -49,8 +62,8 @@ internal static class TestSupport {
     }
 
     /// <summary>A player restored from a save carrying the given level, XP and mana.</summary>
-    public static GameWorldPlayer NewPlayer(int level, long xp, int mana, List<ServerMessage>? sent = null, RaceConfig? races = null) {
-        var player = NewPlayer(sent, races);
+    public static GameWorldPlayer NewPlayer(int level, long xp, int mana, List<ServerMessage>? sent = null, RaceConfig? races = null, NocContent? content = null) {
+        var player = NewPlayer(sent, races, content);
         player.ApplyPersistedState(new PlayerPersistenceState(
             "aresden", 1, 2, 300, 1000, 600, 1, 20, 500, 0, false, false, false,
             CharacterName: "T", SchemaVersion: CharacterSchema.Current, Noc: new NocState(NocState.CurrentV, level, xp, mana)));

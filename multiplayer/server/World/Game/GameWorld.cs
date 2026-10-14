@@ -6,6 +6,7 @@ using Server;
 using Server.Helpers;
 using Server.Nocthemar.Data;
 using Server.Nocthemar.Net;
+using Server.Nocthemar.Skills;
 using Server.Utils;
 
 namespace Server.World.Game;
@@ -173,6 +174,8 @@ public sealed class GameWorld : IWorkerWorld {
     private readonly ProgressionConfig progression;
     private readonly RaceConfig races;
     private readonly NocDispatcher nocDispatcher;
+    /// <summary>Class and skill content given to every player of this world; null = classes disabled.</summary>
+    private readonly NocContent? nocContent;
     private readonly Dictionary<long, GameWorldMonster> monstersByMonsterId = new();
     private readonly Dictionary<long, GameWorldNPC> npcsByNpcId = new();
     /// <summary>Diagnostics: sum of per-loop <see cref="TimeSpan.TotalMilliseconds"/> since last 1s log; only on worker thread.</summary>
@@ -202,7 +205,8 @@ public sealed class GameWorld : IWorkerWorld {
         RaceConfig races,
         IReadOnlyList<GameWorldDwellAreaConfig>? dwellAreas = null,
         IReadOnlyList<GameWorldTeleportSet>? teleportLocs = null,
-        IReadOnlyList<GameWorldNpcPlacementConfig>? initialNpcs = null) {
+        IReadOnlyList<GameWorldNpcPlacementConfig>? initialNpcs = null,
+        NocContent? nocContent = null) {
         if (string.IsNullOrWhiteSpace(id)) {
             throw new ArgumentException("Game world id is required.", nameof(id));
         }
@@ -218,6 +222,7 @@ public sealed class GameWorld : IWorkerWorld {
         ArgumentNullException.ThrowIfNull(npcsById);
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
         this.races = races ?? throw new ArgumentNullException(nameof(races));
+        this.nocContent = nocContent;
         nocDispatcher = new NocDispatcher(settings.Nocthemar?.Debug ?? false);
         this.monsterCatalog = monsterCatalog;
         this.monstersById = monstersById;
@@ -1216,7 +1221,8 @@ public sealed class GameWorld : IWorkerWorld {
             settings.Ping.VarianceSampleSize,
             settings.Timings.AntiHackTimingLagFactor,
             progression,
-            races);
+            races,
+            nocContent);
         player.SetInitialState(spawnLocation.X, spawnLocation.Y);
         occupancyTracker.SetOccupied(spawnLocation.X, spawnLocation.Y);
         playersBySessionId[sessionId] = player;
@@ -1233,6 +1239,7 @@ public sealed class GameWorld : IWorkerWorld {
         ArgumentNullException.ThrowIfNull(killer);
         ArgumentNullException.ThrowIfNull(monster);
         monstersById.TryGetValue(monster.CatalogMonsterId, out var monsterConfig);
+        killer.RegisterKill();
         killer.GrantKillXp(progression.ResolveMonsterXp(monsterConfig?.Xp));
     }
 

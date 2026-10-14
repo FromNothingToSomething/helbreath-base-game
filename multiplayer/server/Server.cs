@@ -12,6 +12,7 @@ using Server.Nocthemar.Core;
 using Server.Nocthemar.Data;
 using Server.Nocthemar.Net;
 using Server.Nocthemar.Persistence;
+using Server.Nocthemar.Skills;
 using Server.World;
 using Server.World.Game;
 using Server.World.Global;
@@ -37,10 +38,14 @@ var settings = await Config.LoadSettings();
 var gcMonitor = settings.Debug.EnableGcLogs ? new GarbageCollectorMonitor() : null;
 var progression = await ProgressionConfig.LoadAsync();
 var races = await RaceConfig.LoadAsync();
+var classes = await ClassConfig.LoadAsync();
+var classSkills = await SkillConfig.LoadAsync(classes);
+// No skill handler exists yet in this module step: every shipped skill is a catalog entry or a pure stat passive. Handlers are registered here as they are written.
+var nocContent = new NocContent(classes, classSkills, progression, new SkillHandlerRegistry());
 var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");
 // Fails fast on an unusable persistence.provider, before any world worker starts.
 var characterStore = CharacterStoreFactory.Create(settings.Persistence, charsDirectory, progression);
-var worldRegistry = new WorldRegistry(settings, progression, races, workerCount: settings.Threads.GameWorldWorkers, tickInterval: TimeSpan.FromMilliseconds(settings.GameWorld.TickInterval));
+var worldRegistry = new WorldRegistry(settings, progression, races, workerCount: settings.Threads.GameWorldWorkers, tickInterval: TimeSpan.FromMilliseconds(settings.GameWorld.TickInterval), nocContent: nocContent);
 var sessionsByNetworkId = new ConcurrentDictionary<string, PlayerSession>(StringComparer.Ordinal);
 var sessionsByServerId = new ConcurrentDictionary<Guid, PlayerSession>();
 
