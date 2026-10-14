@@ -10,7 +10,11 @@ public sealed record ProgressionFile(
     XpCurveFile? Xp = null,
     HpCurveFile? Hp = null,
     ManaCurveFile? Mana = null,
-    int DefaultMonsterXp = -1);
+    int DefaultMonsterXp = -1,
+    SkillPointsFile? SkillPoints = null);
+
+/// <summary>Skill points earned: <c>PerLevel</c> for every level from <c>FirstLevel</c> on (the optional section defaults to 1 point per level from level 2).</summary>
+public sealed record SkillPointsFile(int FirstLevel = ProgressionConfig.DefaultSkillPointsFirstLevel, int PerLevel = ProgressionConfig.DefaultSkillPointsPerLevel);
 
 /// <summary>XP needed to go from level L to L+1 is <c>round(Base * L^Exponent)</c>.</summary>
 public sealed record XpCurveFile(double Base = 0, double Exponent = 0);
@@ -27,6 +31,9 @@ public sealed record ManaCurveFile(int Base = -1, int PerLevel = -1, double Rege
 /// </summary>
 public sealed class ProgressionConfig {
     public const int SupportedSchemaVersion = 1;
+    public const int DefaultSkillPointsFirstLevel = 2;
+    public const int DefaultSkillPointsPerLevel = 1;
+    private const int MaxSkillPointsPerLevel = 10;
     private const int MaxLevelCeiling = 1000;
     private const double XpPerLevelCeiling = 1e12;
 
@@ -44,7 +51,7 @@ public sealed class ProgressionConfig {
 
     private ProgressionConfig(
         int maxLevel, long[] xpToNext, int hpBase, int hpPerLevel, int manaBase, int manaPerLevel,
-        double manaRegenPerSecond, int defaultMonsterXp) {
+        double manaRegenPerSecond, int defaultMonsterXp, int skillPointsFirstLevel, int skillPointsPerLevel) {
         MaxLevel = maxLevel;
         this.xpToNext = xpToNext;
         this.hpBase = hpBase;
@@ -53,11 +60,18 @@ public sealed class ProgressionConfig {
         this.manaPerLevel = manaPerLevel;
         ManaRegenPerSecond = manaRegenPerSecond;
         DefaultMonsterXp = defaultMonsterXp;
+        SkillPointsFirstLevel = skillPointsFirstLevel;
+        SkillPointsPerLevel = skillPointsPerLevel;
     }
 
     public int MaxLevel { get; }
     public double ManaRegenPerSecond { get; }
     public int DefaultMonsterXp { get; }
+    public int SkillPointsFirstLevel { get; }
+    public int SkillPointsPerLevel { get; }
+
+    /// <summary>Total skill points a character of <paramref name="level"/> has earned (spent ones included): 0 below <see cref="SkillPointsFirstLevel"/>, then <see cref="SkillPointsPerLevel"/> per level up to <see cref="MaxLevel"/>.</summary>
+    public int SkillPointsAt(int level) => SkillPointsPerLevel * Math.Max(0, ClampLevel(level) - SkillPointsFirstLevel + 1);
 
     /// <summary>XP for a kill: the monster's own <c>xp</c> from <c>Monsters.json</c> when set and non-negative, otherwise <see cref="DefaultMonsterXp"/>.</summary>
     public int ResolveMonsterXp(int? configuredXp) => configuredXp is int xp && xp >= 0 ? xp : DefaultMonsterXp;
@@ -153,6 +167,15 @@ public sealed class ProgressionConfig {
             }
         }
 
+        var skillPoints = file.SkillPoints ?? new SkillPointsFile();
+        if (skillPoints.FirstLevel < 1 || (file.MaxLevel >= 1 && skillPoints.FirstLevel > file.MaxLevel)) {
+            errors.Add($"skillPoints.firstLevel must be in [1, maxLevel] (got {skillPoints.FirstLevel})");
+        }
+
+        if (skillPoints.PerLevel < 0 || skillPoints.PerLevel > MaxSkillPointsPerLevel) {
+            errors.Add($"skillPoints.perLevel must be in [0, {MaxSkillPointsPerLevel}] (got {skillPoints.PerLevel})");
+        }
+
         // Stat ceilings use long math so a huge perLevel cannot wrap into a valid-looking int.
         if (file.MaxLevel >= 1 && file.MaxLevel <= MaxLevelCeiling) {
             if (file.Hp is { Base: >= 1, PerLevel: >= 0 } hp &&
@@ -177,7 +200,7 @@ public sealed class ProgressionConfig {
 
         return new ProgressionConfig(
             file.MaxLevel, table, file.Hp!.Base, file.Hp.PerLevel, file.Mana!.Base, file.Mana.PerLevel,
-            file.Mana.RegenPerSecond, file.DefaultMonsterXp);
+            file.Mana.RegenPerSecond, file.DefaultMonsterXp, skillPoints.FirstLevel, skillPoints.PerLevel);
     }
 
     /// <summary>Builds the per-level XP table and verifies it is strictly increasing, positive, and bounded (rounding can flatten a curve with a tiny base or exponent).</summary>

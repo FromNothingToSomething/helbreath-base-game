@@ -4,5 +4,6 @@
   "xp": { "base": 100, "exponent": 1.6 },
   "hp": { "base": 1000, "perLevel": 50 },
   "mana": { "base": 100, "perLevel": 10, "regenPerSecond": 2.0 },
-  "defaultMonsterXp": 10
+  "defaultMonsterXp": 10,
+  "skillPoints": { "firstLevel": 2, "perLevel": 1 }
 }
