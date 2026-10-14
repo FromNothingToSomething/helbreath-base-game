@@ -24,6 +24,8 @@
     <None Include="../server/Config/Settings.json" Link="Config/Settings.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../server/Config/Nocthemar/Progression.json" Link="Config/Nocthemar/Progression.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../server/Config/Nocthemar/Races.json" Link="Config/Nocthemar/Races.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../server/Config/Nocthemar/Classes.json" Link="Config/Nocthemar/Classes.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../server/Config/Nocthemar/Skills.json" Link="Config/Nocthemar/Skills.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

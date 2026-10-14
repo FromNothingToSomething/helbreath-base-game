@@ -56,9 +56,9 @@ public class SkillIdsTests {
 
     [Fact]
     public void Slot_levels_and_kinds_match_the_design() {
-        Assert.Equal([1, 3, 6, 10, 14, 18, 24, 30], SkillIds.SlotLevels);
+        Assert.True(new[] { 1, 3, 6, 10, 14, 18, 24, 30 }.SequenceEqual(SkillIds.SlotLevels));
         Assert.Equal(8, SkillIds.SlotLevels.Count);
-        Assert.Equal([true, false, true, false, true, false, true, false], Enumerable.Range(0, 8).Select(SkillIds.IsPassiveSlot));
+        Assert.True(new[] { true, false, true, false, true, false, true, false }.SequenceEqual(Enumerable.Range(0, 8).Select(SkillIds.IsPassiveSlot)));
         Assert.True(SkillIds.IsUltimateSlot(7));
         Assert.False(SkillIds.IsUltimateSlot(6));
         Assert.Equal(30, SkillIds.RequiredLevel(7));

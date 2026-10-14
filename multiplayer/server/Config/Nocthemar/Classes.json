@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "classes": [
+    {
+      "id": 0,
+      "key": "chevalier_osseux",
+      "name": "Chevalier d'Osseux",
+      "role": "Tank / DPS mêlée",
+      "branches": [
+        {
+          "id": 0,
+          "key": "rempart",
+          "name": "Rempart",
+          "role": "Tank pur"
+        },
+        {
+          "id": 1,
+          "key": "briseur",
+          "name": "Briseur",
+          "role": "DPS mêlée"
+        },
+        {
+          "id": 2,
+          "key": "memoire",
+          "name": "Mémoire",
+          "role": "Hybride / Mimétisme"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "key": "chantre_fer",
+      "name": "Chantre de Fer",
+      "role": "Support / DPS distance",
+      "branches": [
+        {
+          "id": 0,
+          "key": "distorsion",
+          "name": "Distorsion",
+          "role": "DPS distance"
+        },
+        {
+          "id": 1,
+          "key": "harmonie",
+          "name": "Harmonie",
+          "role": "Support / Soin"
+        },
+        {
+          "id": 2,
+          "key": "sample",
+          "name": "Sample",
+          "role": "Mimétisme sonore"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "key": "metamorphe",
+      "name": "Métamorphe",
+      "role": "Assassin / DPS furtif",
+      "branches": [
+        {
+          "id": 0,
+          "key": "predateur",
+          "name": "Prédateur",
+          "role": "Assassin"
+        },
+        {
+          "id": 1,
+          "key": "mutation",
+          "name": "Mutation",
+          "role": "DPS / Tank hybride"
+        },
+        {
+          "id": 2,
+          "key": "adaptation",
+          "name": "Adaptation",
+          "role": "Mimétisme évolutif"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "key": "necrophante",
+      "name": "Nécrophante",
+      "role": "Soigneur / Invocateur",
+      "branches": [
+        {
+          "id": 0,
+          "key": "benediction",
+          "name": "Bénédiction",
+          "role": "Soin pur"
+        },
+        {
+          "id": 1,
+          "key": "invocation",
+          "name": "Invocation",
+          "role": "Armée des morts"
+        },
+        {
+          "id": 2,
+          "key": "malediction",
+          "name": "Malédiction",
+          "role": "Débuff / DPS"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "key": "forgeur_abysses",
+      "name": "Forgeur d'Abysses",
+      "role": "Mage / DPS distance",
+      "branches": [
+        {
+          "id": 0,
+          "key": "fusion",
+          "name": "Fusion",
+          "role": "DPS magique"
+        },
+        {
+          "id": 1,
+          "key": "forge",
+          "name": "Forge",
+          "role": "Buff / Armure"
+        },
+        {
+          "id": 2,
+          "key": "extraction",
+          "name": "Extraction",
+          "role": "Mimétisme matériel"
+        }
+      ]
+    }
+  ]
+}

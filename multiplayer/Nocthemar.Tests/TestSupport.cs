@@ -11,6 +11,12 @@ internal static class TestSupport {
     public const string ProgressionJson =
         """{"schemaVersion":1,"maxLevel":100,"xp":{"base":100,"exponent":1.6},"hp":{"base":1000,"perLevel":50},"mana":{"base":100,"perLevel":10,"regenPerSecond":2.0},"defaultMonsterXp":10}""";
 
+    /// <summary>The shipped Config/Nocthemar/Classes.json (linked into the test output).</summary>
+    public static ClassConfig ShippedClasses() => ClassConfig.LoadAsync(Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Classes.json")).GetAwaiter().GetResult();
+
+    /// <summary>The shipped Config/Nocthemar/Skills.json validated against <see cref="ShippedClasses"/>.</summary>
+    public static SkillConfig ShippedSkills() => SkillConfig.LoadAsync(ShippedClasses(), Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Skills.json")).GetAwaiter().GetResult();
+
     public static ProgressionConfig Progression() => ProgressionConfig.Parse(ProgressionJson);
 
     /// <summary>One race without any modifier: players built with it behave exactly as before races existed (the default of <see cref="NewPlayer(List{ServerMessage}?, RaceConfig?)"/>).</summary>
