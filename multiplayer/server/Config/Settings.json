@@ -10,6 +10,9 @@
   "maxDroppedItemsInStack": 10,
   "enableZeroCopyProtobufTransfer": false,
   "maxConsecutiveOutboundSendFailures": 10,
+  "persistence": {
+    "provider": "json"
+  },
   "threads": {
     "gameWorldWorkers": 1,
     "globalWorldWorkerThread": 0

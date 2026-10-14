@@ -21,6 +21,7 @@
   <ItemGroup>
     <None Update="Fixtures/**" CopyToOutputDirectory="PreserveNewest" />
     <!-- Tests run against the shipped config file, not a copy. -->
+    <None Include="../server/Config/Settings.json" Link="Config/Settings.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../server/Config/Nocthemar/Progression.json" Link="Config/Nocthemar/Progression.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

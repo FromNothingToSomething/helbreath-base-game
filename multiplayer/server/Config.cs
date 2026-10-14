@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Mmorpg.Network;
+using Server.Nocthemar.Persistence;
 using Server.Utils;
 
 namespace Server;
@@ -871,4 +872,6 @@ public record SettingsConfig(
     /// <summary>When true, serialize outbound protobuf with <c>MessageExtensions.WriteTo(Span&lt;byte&gt;)</c> instead of <see cref="System.IO.MemoryStream"/> + <see cref="Google.Protobuf.CodedOutputStream"/>; JSON <c>enableZeroCopyProtobufTransfer</c> in <c>Settings.json</c>. Produces less garbage, but in benchmarks reduces throughput versus the stream path.</summary>
     bool EnableZeroCopyProtobufTransfer = false,
     /// <summary>After this many consecutive outbound encode/send failures (excluding cancellation), cancel the connection receive loop. Zero disables the circuit breaker. JSON <c>maxConsecutiveOutboundSendFailures</c>.</summary>
-    int MaxConsecutiveOutboundSendFailures = 10);
+    int MaxConsecutiveOutboundSendFailures = 10,
+    /// <summary>Character persistence provider; JSON <c>persistence</c> in <c>Settings.json</c>. Null selects the JSON file store.</summary>
+    PersistenceConfig? Persistence = null);
