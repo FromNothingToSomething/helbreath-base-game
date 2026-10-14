@@ -1210,6 +1210,17 @@ public sealed class GameWorld : IWorkerWorld {
         return player;
     }
 
+    /// <summary>
+    /// Credits the killing blow of a player on a monster with its XP (<c>xp</c> in Monsters.json, else <c>defaultMonsterXp</c>).
+    /// Called only from the player-attack paths in <see cref="Server.Helpers.Combat"/>: monster-vs-monster kills and the admin kill-all never reach it.
+    /// </summary>
+    public void OnMonsterKilledByPlayer(GameWorldPlayer killer, GameWorldMonster monster) {
+        ArgumentNullException.ThrowIfNull(killer);
+        ArgumentNullException.ThrowIfNull(monster);
+        monstersById.TryGetValue(monster.CatalogMonsterId, out var monsterConfig);
+        killer.GrantXp(progression.ResolveMonsterXp(monsterConfig?.Xp));
+    }
+
     public bool TryGetPlayerBySessionId(Guid sessionId, out GameWorldPlayer player) {
         return playersBySessionId.TryGetValue(sessionId, out player!);
     }

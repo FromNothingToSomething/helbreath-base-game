@@ -557,6 +557,9 @@ public static class Combat {
             resolution.KnockbackFromY);
         if (resolution.HpAfter == 0) {
             MonsterVisibility.BroadcastMonsterDied(wr, targetMonster);
+            if (wr.World.TryGetConnectedPlayerById(attackerPlayerId, out var killer)) {
+                wr.World.OnMonsterKilledByPlayer(killer, targetMonster);
+            }
         } else {
             TryApplyGroundEffectSpellTemporaryEffectsAfterDamage(wr, spellId, targetMonster);
         }
@@ -724,6 +727,7 @@ public static class Combat {
             resolution.KnockbackFromY);
         if (resolution.HpAfter == 0) {
             MonsterVisibility.BroadcastMonsterDied(wr, targetMonster);
+            wr.World.OnMonsterKilledByPlayer(attacker, targetMonster);
         }
     }
 

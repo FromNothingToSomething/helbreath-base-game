@@ -88,6 +88,9 @@ public static class Config {
             if (!idSet.Add(m.Id)) {
                 throw new InvalidOperationException($"Duplicate monster id {m.Id} in Monsters.json.");
             }
+            if (m.Xp is int xp && xp < 0) {
+                throw new InvalidOperationException($"Monsters.json entry at index {i} has negative xp ({xp}).");
+            }
             if (m.ChaseDistance is int cd && cd < 0) {
                 throw new InvalidOperationException($"Monsters.json entry at index {i} has negative chaseDistance ({cd}).");
             }
@@ -721,7 +724,9 @@ public record MonsterConfig(
     /// <summary>Delay in ms before a dwell-spawned monster respawns after corpse removal when omitted; uses <c>monsterDefaults.respawnTime</c> in <c>Settings.json</c>.</summary>
     int? RespawnTime = null,
     /// <summary>Optional AI spell list; each entry references <c>Spells.json</c> by id (ground-effect spells are rejected at startup).</summary>
-    MonsterSpellEntry[]? Spells = null);
+    MonsterSpellEntry[]? Spells = null,
+    /// <summary>XP granted to the player who lands the killing blow; when omitted uses <c>defaultMonsterXp</c> in <c>Config/Nocthemar/Progression.json</c>. Must be zero or greater.</summary>
+    int? Xp = null);
 
 /// <summary>Ranged vs melee for catalog <c>weaponType</c> (JSON and <see cref="Mmorpg.Network.ItemDirectoryEntry"/>).</summary>
 public enum ItemWeaponType {

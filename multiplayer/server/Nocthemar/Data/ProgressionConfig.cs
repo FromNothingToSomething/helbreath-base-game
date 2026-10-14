@@ -59,6 +59,9 @@ public sealed class ProgressionConfig {
     public double ManaRegenPerSecond { get; }
     public int DefaultMonsterXp { get; }
 
+    /// <summary>XP for a kill: the monster's own <c>xp</c> from <c>Monsters.json</c> when set and non-negative, otherwise <see cref="DefaultMonsterXp"/>.</summary>
+    public int ResolveMonsterXp(int? configuredXp) => configuredXp is int xp && xp >= 0 ? xp : DefaultMonsterXp;
+
     /// <summary>Clamps to [1, <see cref="MaxLevel"/>].</summary>
     public int ClampLevel(int level) => Math.Clamp(level, 1, MaxLevel);
 
