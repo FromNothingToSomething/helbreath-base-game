@@ -148,5 +148,5 @@ dotnet run -- <file-or-folder-path> [mode] [divergence]
 
 ## NOCTHEMAR checks (CI only)
 
-- `proto-roundtrip/`: T23. `decode.ts` (TS) and `decode.py` (Python) decode `multiplayer/Nocthemar.Tests/Fixtures/proto/noc_state_updated.bin`, which `ProtoFixtureTests` (C#) must reproduce byte for byte. Workflow `proto-roundtrip.yml`.
+- `proto-roundtrip/`: T23. `decode.ts` (TS) and `decode.py` (Python) decode the fixtures `noc_state_updated` and `authenticate_request` (`multiplayer/Nocthemar.Tests/Fixtures/proto/<name>.bin` + `<name>.json`), which `ProtoFixtureTests` (C#) must reproduce byte for byte. Workflow `proto-roundtrip.yml`.
 - `noc-e2e/`: T21. `run.sh` + `reconnect.ts`, nightly workflow `noc-e2e.yml` (not part of `build.yml`): clients held before the first disconnect, HEAD vs upstream base (±5 %), and NocSnapshot identical after reconnect and after a server restart.

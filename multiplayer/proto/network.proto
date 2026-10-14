@@ -265,6 +265,8 @@ message LogoutCancelledRequest {
 message AuthenticateRequest {
   string id = 1;
   string character_name = 2;
+  // Only used when no save exists for `id`; see NocCharacterCreation.
+  NocCharacterCreation creation = 3;
 }
 
 message LogoutRequest {
@@ -903,6 +905,8 @@ message PlayerEnteredRange {
   repeated TemporaryEffectType active_temporary_effects = 16;
   optional int32 attack_speed_ms = 17;
   optional int32 cast_speed_ms = 18;
+  // Race of this player (Races.json); 0 = default race, which is also what an absent field decodes to.
+  int32 race_id = 19;
 }
 
 message MonsterInRange {

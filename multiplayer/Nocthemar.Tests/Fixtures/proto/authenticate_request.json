@@ -1,0 +1,12 @@
+{
+  "payload": "authenticate_request",
+  "id": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "character_name": "Zoë-Ægir",
+  "creation": {
+    "race_id": 5,
+    "gender": 1,
+    "skin_color": 2,
+    "hair_style_index": 5,
+    "underwear_color_index": 7
+  }
+}

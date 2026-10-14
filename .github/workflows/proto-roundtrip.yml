@@ -1,6 +1,6 @@
 name: Proto round-trip (C# -> TS)
 
-# T23: C# encodes the canonical message, TS and Python (3rd implementation) decode it, and all are compared with the committed binary fixture.
+# T23/T29: C# encodes the canonical messages (ServerMessage.noc_state_updated, ClientMessage.authenticate_request with creation), TS and Python (3rd implementation) decode them, and all are compared with the committed binary fixtures.
 # Until T23 lands, the prerequisites job only warns and the round-trip jobs are skipped; they run automatically once every file exists.
 # No server or client is started: only the serialized bytes cross the language boundary.
 on:
@@ -22,8 +22,8 @@ concurrency:
 
 env:
   FIXTURE_DIR: multiplayer/Nocthemar.Tests/Fixtures/proto
-  FIXTURE_BIN: noc_state_updated.bin
-  FIXTURE_EXPECTED: expected.json
+  # Each name has <name>.bin (committed bytes) and <name>.json (expected decoded value; its "payload" selects the message type).
+  FIXTURES: noc_state_updated authenticate_request
 
 jobs:
   prerequisites:
@@ -39,13 +39,9 @@ jobs:
         id: check
         run: |
           missing=0
-          for f in \
-            multiplayer/proto/nocthemar.proto \
-            multiplayer/Nocthemar.Tests/ProtoFixtureTests.cs \
-            "$FIXTURE_DIR/$FIXTURE_BIN" \
-            "$FIXTURE_DIR/$FIXTURE_EXPECTED" \
-            tools/proto-roundtrip/decode.ts \
-            tools/proto-roundtrip/decode.py; do
+          files="multiplayer/proto/nocthemar.proto multiplayer/Nocthemar.Tests/ProtoFixtureTests.cs tools/proto-roundtrip/decode.ts tools/proto-roundtrip/decode.py"
+          for n in $FIXTURES; do files="$files $FIXTURE_DIR/$n.bin $FIXTURE_DIR/$n.json"; done
+          for f in $files; do
             if [ ! -f "$f" ]; then echo "::warning::missing $f (T23 not committed yet): round-trip skipped"; missing=1; fi
           done
           if [ "$missing" -eq 0 ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else echo "ready=false" >> "$GITHUB_OUTPUT"; fi
@@ -79,7 +75,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fixture-cs
-          path: ${{ runner.temp }}/fixture-cs/${{ env.FIXTURE_BIN }}
+          path: ${{ runner.temp }}/fixture-cs/*.bin
           if-no-files-found: error
 
   decode-ts:
@@ -114,23 +110,20 @@ jobs:
           name: fixture-cs
           path: ${{ runner.temp }}/fixture-cs
 
-      - name: Bytes from C# are identical to the committed fixture
-        run: cmp "${{ runner.temp }}/fixture-cs/${FIXTURE_BIN}" "${FIXTURE_DIR}/${FIXTURE_BIN}"
+      - name: Bytes from C# are identical to the committed fixtures
+        run: |
+          for n in $FIXTURES; do
+            cmp "${{ runner.temp }}/fixture-cs/$n.bin" "$FIXTURE_DIR/$n.bin" && echo "identical: $n"
+          done
 
-      # decode.ts decodes both files with the generated TS types and exits non-zero unless the result equals expected.json.
-      - name: Decode C# bytes
+      # decode.ts decodes each file with the generated TS types and exits non-zero unless the result equals <name>.json.
+      - name: Decode C# bytes and committed fixtures
         working-directory: tools
-        run: >
-          node --import tsx ./proto-roundtrip/decode.ts
-          --bin "${{ runner.temp }}/fixture-cs/${FIXTURE_BIN}"
-          --expected "../${FIXTURE_DIR}/${FIXTURE_EXPECTED}"
-
-      - name: Decode committed fixture
-        working-directory: tools
-        run: >
-          node --import tsx ./proto-roundtrip/decode.ts
-          --bin "../${FIXTURE_DIR}/${FIXTURE_BIN}"
-          --expected "../${FIXTURE_DIR}/${FIXTURE_EXPECTED}"
+        run: |
+          for n in $FIXTURES; do
+            node --import tsx ./proto-roundtrip/decode.ts --bin "${{ runner.temp }}/fixture-cs/$n.bin" --expected "../$FIXTURE_DIR/$n.json"
+            node --import tsx ./proto-roundtrip/decode.ts --bin "../$FIXTURE_DIR/$n.bin" --expected "../$FIXTURE_DIR/$n.json"
+          done
 
   # Third, independent implementation: protobuf-python decodes the bytes produced by C# and the committed fixture (no .NET, no Node).
   decode-py:
@@ -161,16 +154,9 @@ jobs:
           name: fixture-cs
           path: ${{ runner.temp }}/fixture-cs
 
-      - name: Decode C# bytes
-        run: >
-          python tools/proto-roundtrip/decode.py
-          --gen "${{ runner.temp }}/py-gen"
-          --bin "${{ runner.temp }}/fixture-cs/${FIXTURE_BIN}"
-          --expected "${FIXTURE_DIR}/${FIXTURE_EXPECTED}"
-
-      - name: Decode committed fixture
-        run: >
-          python tools/proto-roundtrip/decode.py
-          --gen "${{ runner.temp }}/py-gen"
-          --bin "${FIXTURE_DIR}/${FIXTURE_BIN}"
-          --expected "${FIXTURE_DIR}/${FIXTURE_EXPECTED}"
+      - name: Decode C# bytes and committed fixtures
+        run: |
+          for n in $FIXTURES; do
+            python tools/proto-roundtrip/decode.py --gen "${{ runner.temp }}/py-gen" --bin "${{ runner.temp }}/fixture-cs/$n.bin" --expected "$FIXTURE_DIR/$n.json"
+            python tools/proto-roundtrip/decode.py --gen "${{ runner.temp }}/py-gen" --bin "$FIXTURE_DIR/$n.bin" --expected "$FIXTURE_DIR/$n.json"
+          done

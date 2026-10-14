@@ -5,6 +5,7 @@
     "xp": "4294967297",
     "xp_to_next": "8589934592",
     "mana": 45,
-    "max_mana": 170
+    "max_mana": 170,
+    "race_id": 3
   }
 }

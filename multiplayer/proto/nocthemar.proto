@@ -15,6 +15,21 @@ message NocSnapshot {
   int64 xp_to_next = 3;
   int32 mana = 4;
   int32 max_mana = 5;
+  // Id of the character's race (Races.json). 0 = default race, which is also what an absent field decodes to.
+  int32 race_id = 6;
+}
+
+// Sent once, inside AuthenticateRequest, to create a character. Ignored by the server when a save already exists for the id
+// (race is immutable). Plain int32 for the appearance axes because network.proto, which owns the enums, imports this file;
+// values are those of PlayerGender / PlayerSkinColor and the hair (0-7) and underwear (0-7) indices of ChangePlayerAppearanceRequest.
+message NocCharacterCreation {
+  int32 race_id = 1;
+  // PlayerGender: 0 = male, 1 = female.
+  int32 gender = 2;
+  // PlayerSkinColor: 0 = light, 1 = tanned, 2 = dark.
+  int32 skin_color = 3;
+  int32 hair_style_index = 4;
+  int32 underwear_color_index = 5;
 }
 
 // Debug only: the server ignores it unless Settings.json nocthemar.debug is true.

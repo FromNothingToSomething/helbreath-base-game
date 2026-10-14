@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { toNocViewModel } from '../../multiplayer/mp-client/src/utils/NocView';
-import { ClientMessage, InitialState, ServerMessage } from '../../multiplayer/mp-client/src/proto/generated/network';
+import { ClientMessage, InitialState, PlayerEnteredRange, ServerMessage } from '../../multiplayer/mp-client/src/proto/generated/network';
 import { NocSnapshot } from '../../multiplayer/mp-client/src/proto/generated/nocthemar';
 
 const snapshot = (over: Partial<NocSnapshot> = {}): NocSnapshot => ({
@@ -12,6 +12,7 @@ const snapshot = (over: Partial<NocSnapshot> = {}): NocSnapshot => ({
     xpToNext: 1000n,
     mana: 40,
     maxMana: 160,
+    raceId: 0,
     ...over,
 });
 
@@ -88,4 +89,50 @@ test('NocGrantXpRequest is client field 100 on the wire', () => {
     const decoded = ClientMessage.decode(bytes);
     assert.equal(decoded.payload?.$case, 'nocGrantXpRequest');
     assert.equal(decoded.payload?.$case === 'nocGrantXpRequest' ? decoded.payload.value.amount : undefined, 100n);
+});
+
+test('AuthenticateRequest carries the character creation as field 3', () => {
+    const creation = { raceId: 4, gender: 1, skinColor: 2, hairStyleIndex: 6, underwearColorIndex: 3 };
+    const bytes = ClientMessage.encode({
+        payload: { $case: 'authenticateRequest', value: { id: 'abc', characterName: 'Zoë', creation } },
+    }).finish();
+
+    const decoded = ClientMessage.decode(bytes);
+    assert.equal(decoded.payload?.$case, 'authenticateRequest');
+    if (decoded.payload?.$case !== 'authenticateRequest') {
+        return;
+    }
+    assert.equal(decoded.payload.value.id, 'abc');
+    assert.equal(decoded.payload.value.characterName, 'Zoë');
+    assert.deepEqual(decoded.payload.value.creation, creation);
+});
+
+test('AuthenticateRequest without creation still decodes (older clients)', () => {
+    const bytes = ClientMessage.encode({
+        payload: { $case: 'authenticateRequest', value: { id: 'abc', characterName: 'Zoë', creation: undefined } },
+    }).finish();
+
+    const decoded = ClientMessage.decode(bytes);
+    assert.equal(decoded.payload?.$case === 'authenticateRequest' ? decoded.payload.value.creation : 'wrong case', undefined);
+});
+
+test('race id 0 is not on the wire and an absent race id decodes to 0', () => {
+    const withoutRace = ServerMessage.encode({
+        payload: { $case: 'nocStateUpdated', value: { state: snapshot({ raceId: 0 }) } },
+    }).finish();
+    const withRace = ServerMessage.encode({
+        payload: { $case: 'nocStateUpdated', value: { state: snapshot({ raceId: 3 }) } },
+    }).finish();
+
+    // Field 6, varint: tag 0x30. Two bytes longer with a race (tag + value), identical to the old layout without one.
+    assert.equal(withRace.length, withoutRace.length + 2);
+    const decoded = ServerMessage.decode(withoutRace);
+    assert.equal(decoded.payload?.$case === 'nocStateUpdated' ? decoded.payload.value.state?.raceId : undefined, 0);
+});
+
+test('PlayerEnteredRange carries race_id as field 19', () => {
+    const encoded = PlayerEnteredRange.encode(PlayerEnteredRange.fromPartial({ playerId: 5n, raceId: 2 })).finish();
+
+    assert.equal(PlayerEnteredRange.decode(encoded).raceId, 2);
+    assert.equal(PlayerEnteredRange.decode(PlayerEnteredRange.encode(PlayerEnteredRange.fromPartial({ playerId: 5n })).finish()).raceId, 0);
 });
