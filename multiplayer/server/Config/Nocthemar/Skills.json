@@ -334,7 +334,8 @@
       "kind": "passive",
       "cost": 1,
       "desc": "+1% défense permanente par monstre tué (max 20%)",
-      "status": "planned"
+      "status": "ready",
+      "handler": "passive_abyssal_heritage"
     },
     {
       "id": 1027,

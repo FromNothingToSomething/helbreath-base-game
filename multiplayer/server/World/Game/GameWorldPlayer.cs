@@ -457,7 +457,23 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
 
     /// <summary>Puts the modifiers and handlers of the learned skills into <see cref="stats"/> and the hook table (replacing the previous ones). Must run before max HP and mana are derived.</summary>
     private void ApplySkillEffects() {
-        skillEffects?.Apply(skillService!.Learned(noc));
+        if (skillEffects is null) {
+            return;
+        }
+
+        skillEffects.Apply(skillService!.Learned(noc));
+        skillEffects.Hooks.Run(SkillHook.OnApply, PlayerId, null, 0, lastHpTickMs, actor: this);
+    }
+
+    /// <inheritdoc />
+    public void SetSkillModifiers(int skillId, IReadOnlyList<StatModifier> modifiers) {
+        var source = ModifierSources.Skill(skillId);
+        stats.RemoveSource(source);
+        foreach (var m in modifiers) {
+            stats.Add(m with { SourceId = source });
+        }
+
+        nocDirty = true;
     }
 
     /// <summary>Classes and skills for the client's first <c>InitialState</c>; null when the world has no class content.</summary>
@@ -587,6 +603,8 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         if (noc.Kills < int.MaxValue) {
             noc = noc with { Kills = noc.Kills + 1 };
         }
+
+        skillEffects?.Hooks.Run(SkillHook.OnKill, PlayerId, null, 0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), actor: this);
     }
 
     /// <summary>Chooses the class once. Returns null on success, otherwise the reason shown to the player.</summary>

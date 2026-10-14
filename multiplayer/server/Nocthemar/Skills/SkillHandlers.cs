@@ -22,15 +22,18 @@ public enum SkillHook {
 
     /// <summary>Every world tick of the player (kept to a minimum: it is the hot path).</summary>
     OnTick = 16,
+
+    /// <summary>The skill's effects were (re)applied to the player: learned, respec, level-up or load. Lets a handler rebuild state it derives from persisted data (kills, ...); it must not trigger another refresh.</summary>
+    OnApply = 32,
 }
 
 public static class SkillHooks {
     /// <summary>Number of single-bit hooks; the hook table is indexed by bit position.</summary>
-    public const int Count = 5;
+    public const int Count = 6;
 
-    public const SkillHook All = SkillHook.OnCast | SkillHook.OnHitDealt | SkillHook.OnDamageTaken | SkillHook.OnKill | SkillHook.OnTick;
+    public const SkillHook All = SkillHook.OnCast | SkillHook.OnHitDealt | SkillHook.OnDamageTaken | SkillHook.OnKill | SkillHook.OnTick | SkillHook.OnApply;
 
-    /// <summary>Bit position of a single hook (OnCast = 0 ... OnTick = 4).</summary>
+    /// <summary>Bit position of a single hook (OnCast = 0 ... OnApply = 5).</summary>
     public static int IndexOf(SkillHook hook) {
         var value = (int)hook;
         if (value == 0 || (value & (value - 1)) != 0 || (hook & ~All) != 0) {
@@ -58,6 +61,15 @@ public interface ISkillActor {
 
     /// <summary>Applies timed stat modifiers owned by the skill until <paramref name="untilMs"/>; casting again refreshes them instead of stacking.</summary>
     void ApplyBuff(int skillId, IReadOnlyList<Server.Nocthemar.Core.StatModifier> modifiers, long untilMs);
+
+    /// <summary>Monsters killed by the player so far (persisted).</summary>
+    int Kills { get; }
+
+    /// <summary>
+    /// Replaces the modifiers a passive handler computes itself (source = the skill). They last until the skills are re-applied, so a handler rebuilds them on <see cref="SkillHook.OnApply"/>.
+    /// Does not refresh max HP / mana: use it for stats that do not feed them.
+    /// </summary>
+    void SetSkillModifiers(int skillId, IReadOnlyList<Server.Nocthemar.Core.StatModifier> modifiers);
 }
 
 /// <summary>Outcome of a handler. <c>Refusal</c> is a short player-facing reason when <c>Success</c> is false (nothing is spent).</summary>
@@ -224,11 +236,11 @@ public sealed class SkillHookTable {
     /// Runs every subscriber of <paramref name="hook"/> in subscription order and returns how many succeeded.
     /// A throwing handler is isolated: <paramref name="onError"/> receives it and the others still run.
     /// </summary>
-    public int Run(SkillHook hook, int casterId, int? targetId, int amount, long nowMs, Action<SkillDefinition, Exception>? onError = null) {
+    public int Run(SkillHook hook, int casterId, int? targetId, int amount, long nowMs, Action<SkillDefinition, Exception>? onError = null, ISkillActor? actor = null) {
         var list = byHook[SkillHooks.IndexOf(hook)];
         var succeeded = 0;
         foreach (var entry in list) {
-            var context = new SkillContext(entry.Skill, hook, casterId, targetId, amount, nowMs);
+            var context = new SkillContext(entry.Skill, hook, casterId, targetId, amount, nowMs, actor);
             try {
                 if (entry.Handler.Execute(in context).Success) {
                     succeeded++;

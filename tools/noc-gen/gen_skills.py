@@ -125,6 +125,7 @@ READY = {
 ACTIVES = {
  (0, 0, 1): ("buff_bone_shield", 20000, 25, None),
  (3, 0, 1): ("heal_black_blessing", 12000, 30, "Soigne 250 PV"),
+ (0, 2, 6): ("passive_abyssal_heritage", 0, 0, None),
 }
 
 def slug(s):
@@ -151,7 +152,9 @@ def main(out):
                      "level": LEVELS[si], "kind": KINDS[si], "cost": 2 if si == 7 else 1, "desc": desc,
                      "status": "ready" if mods or active else "planned"}
                 if active:
-                    s.update({"handler": active[0], "cooldownMs": active[1], "manaCost": active[2]})
+                    s["handler"] = active[0]
+                    if KINDS[si] != "passive":
+                        s.update({"cooldownMs": active[1], "manaCost": active[2]})
                 if mods:
                     s["modifiers"] = mods
                 skills.append(s)

@@ -75,6 +75,44 @@ public class BuiltinHandlerTests {
     }
 
     [Fact]
+    public void Abyssal_heritage_grows_with_kills_up_to_twenty_percent() {
+        var p = Player(0, 24, 1020, 1022, 1026);
+        Assert.Equal(1.0, p.Stats.Get(StatId.ArmorMult), 12);
+
+        for (var i = 0; i < 5; i++) {
+            p.RegisterKill();
+        }
+
+        Assert.Equal(1.05, p.Stats.Get(StatId.ArmorMult), 12);
+        for (var i = 0; i < 40; i++) {
+            p.RegisterKill();
+        }
+
+        Assert.Equal(1.20, p.Stats.Get(StatId.ArmorMult), 12);
+        Assert.Equal(45, p.Kills);
+    }
+
+    [Fact]
+    public void Abyssal_heritage_is_rebuilt_from_the_persisted_kills_and_dropped_by_a_respec() {
+        var p = TestSupport.NewPlayer(null, null, Content());
+        TestSupport.Restore(p, new NocState(NocState.CurrentV, 24, 0, 100, RaceId: 0, ClassId: 0, Skills: [1020, 1022, 1026], Kills: 12));
+
+        Assert.Equal(1.12, p.Stats.Get(StatId.ArmorMult), 12);
+        Assert.True(p.Respec());
+        Assert.Equal(1.0, p.Stats.Get(StatId.ArmorMult), 12);
+    }
+
+    [Fact]
+    public void Kills_without_the_skill_change_nothing() {
+        var p = Player(0, 10, 1000);
+
+        p.RegisterKill();
+
+        Assert.Equal(1, p.Kills);
+        Assert.Equal(1.15, p.Stats.Get(StatId.ArmorMult), 12);
+    }
+
+    [Fact]
     public void Handlers_without_an_actor_refuse() {
         var skill = TestSupport.ShippedSkills().Skills.Single(s => s.Id == 1001);
         var table = new SkillHookTable(Content().Handlers);
