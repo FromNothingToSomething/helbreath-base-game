@@ -429,6 +429,19 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         mana = Math.Clamp(noc.Mana, 0, stats.MaxMana);
     }
 
+    /// <summary>XP credited for a kill worth <paramref name="baseXp"/>: scaled by <see cref="StatId.XpGainMult"/> and rounded half away from zero; 0 for a non-positive base.</summary>
+    public long ScaleKillXp(int baseXp) {
+        if (baseXp <= 0) {
+            return 0;
+        }
+
+        var scaled = Math.Round(baseXp * stats.XpGainMult, MidpointRounding.AwayFromZero);
+        return scaled >= long.MaxValue ? long.MaxValue : (long)scaled;
+    }
+
+    /// <summary>Grants the XP of a kill, with the player's XP gain modifiers. Debug and admin grants use <see cref="GrantXp"/>, which stays raw.</summary>
+    public int GrantKillXp(int baseXp) => GrantXp(ScaleKillXp(baseXp));
+
     /// <summary>
     /// Grants XP with chained level-ups. On level-up the stat base is refreshed, HP is refilled (unless dead) and mana is refilled to <see cref="MaxMana"/>.
     /// Returns the number of levels gained; the caller is responsible for notifying the client.
