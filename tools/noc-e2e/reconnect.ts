@@ -12,8 +12,8 @@
  *         disconnect, reconnect at once (session still in its disconnect grace: in-memory state) and compare, disconnect again, write the state file.
  * verify: run after a graceful server restart (state reloaded from disk): reconnect with the same ids and compare with the state file.
  *         Each client sends a creation block for ANOTHER race: the save exists, so the server must ignore it (the race is immutable).
- * Needs at least 6 clients so that every race is covered; both phases also fail when a race is missing from the run, or when
- * races with different max-HP modifiers (Races.json) end up with the same max HP, or races with the same ones with different max HP.
+ * Needs at least 6 clients so that every race is covered; both phases also fail when a race is missing from the run, or when a client's
+ * max HP is not exactly what its race and level give (Progression.json + the race's MaxHp modifiers in Races.json; max HP grows with the level).
  * Exit code 1 on any mismatch; "ALL IDENTICAL" is printed only when everything matched.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -139,34 +139,46 @@ const report = (name: string, phase: string, expected: Snap, actual: Snap | unde
 };
 
 interface RaceJson { id: number; key: string; modifiers: { stat: string; kind: string; value: number }[] }
-const races: RaceJson[] = (JSON.parse(readFileSync(join(process.cwd(), '..', 'multiplayer', 'server', 'Config', 'Nocthemar', 'Races.json'), 'utf8')) as { races: RaceJson[] }).races;
-const maxHpSignature = (raceId: number): string =>
-    JSON.stringify(races.find((r) => r.id === raceId)?.modifiers.filter((m) => m.stat === 'MaxHp').map((m) => [m.kind, m.value]).sort() ?? null);
+const nocConfigDir = join(process.cwd(), '..', 'multiplayer', 'server', 'Config', 'Nocthemar');
+const races: RaceJson[] = (JSON.parse(readFileSync(join(nocConfigDir, 'Races.json'), 'utf8')) as { races: RaceJson[] }).races;
+const progression = JSON.parse(readFileSync(join(nocConfigDir, 'Progression.json'), 'utf8')) as { maxLevel: number; hp: { base: number; perLevel: number } };
 
-/** Every race is present, and max HP follows the race: same max-HP modifiers, same max HP; different modifiers, different max HP. */
-function checkRaces(phase: string, clients: { name: string; race: number; maxHp: number }[]): void {
-    const seen = new Set(clients.map((c) => c.race));
-    const missing = Array.from({ length: RACE_COUNT }, (_, r) => r).filter((r) => !seen.has(r));
-    const problems: string[] = [];
-    if (missing.length > 0) problems.push(`races missing from the run: ${missing.join(',')}`);
-    const bySignature = new Map<string, Set<number>>();
-    for (const c of clients) {
-        const sig = maxHpSignature(c.race);
-        if (!bySignature.has(sig)) bySignature.set(sig, new Set());
-        bySignature.get(sig)!.add(c.maxHp);
+/**
+ * Max HP the server must report: the level's base (Progression.json hp.base + hp.perLevel * (level - 1)) resolved through the race's MaxHp
+ * modifiers in the order of StatPipeline: (base + flat) * (1 + sum of PercentAdd) * product of (1 + PercentMult), rounded half away from zero.
+ * Max HP depends on the level, so clients of the same race but of different levels legitimately differ.
+ */
+function expectedMaxHp(raceId: number, level: number): number {
+    const clamped = Math.min(Math.max(level, 1), progression.maxLevel);
+    let flat = 0, add = 0, mult = 1;
+    for (const m of races.find((r) => r.id === raceId)?.modifiers.filter((x) => x.stat === 'MaxHp') ?? []) {
+        if (m.kind === 'Flat') flat += m.value;
+        else if (m.kind === 'PercentAdd') add += m.value;
+        else mult *= Math.max(0, 1 + m.value);
     }
-    for (const [sig, values] of bySignature) if (values.size !== 1) problems.push(`max HP differs for races with the same max-HP modifiers ${sig}: ${[...values].join(',')}`);
-    const distinct = new Set([...bySignature.values()].map((v) => [...v][0]));
-    if (distinct.size !== bySignature.size) problems.push('races with different max-HP modifiers share the same max HP (race not applied?)');
+    return Math.max(1, Math.round((progression.hp.base + progression.hp.perLevel * (clamped - 1) + flat) * Math.max(0, 1 + add) * mult));
+}
+
+/** Every race is present, and every client's max HP is exactly what its race and level give (same race and level, same max HP). */
+function checkRaces(phase: string, clients: { name: string; race: number; level: number; maxHp: number }[]): void {
+    const seen = new Set(clients.map((c) => c.race));
+    const problems: string[] = [];
+    const missing = Array.from({ length: RACE_COUNT }, (_, r) => r).filter((r) => !seen.has(r));
+    if (missing.length > 0) problems.push(`races missing from the run: ${missing.join(',')}`);
+    for (const c of clients) {
+        const expected = expectedMaxHp(c.race, c.level);
+        if (c.maxHp !== expected) problems.push(`${c.name}: race ${c.race} level ${c.level} has max HP ${c.maxHp}, expected ${expected}`);
+    }
     for (let r = 0; r < RACE_COUNT; r++) {
         const mine = clients.filter((c) => c.race === r);
-        console.log(`     race ${r} (${races.find((x) => x.id === r)?.key ?? '?'}): ${mine.length} client(s), max HP ${[...new Set(mine.map((c) => c.maxHp))].join('/') || '-'}`);
+        const byLevel = [...new Set(mine.map((c) => c.level))].sort((a, b) => a - b).map((l) => `L${l}=${mine.find((c) => c.level === l)!.maxHp}`);
+        console.log(`     race ${r} (${races.find((x) => x.id === r)?.key ?? '?'}): ${mine.length} client(s), max HP ${byLevel.join(' ') || '-'}`);
     }
     if (problems.length > 0) {
         failures += problems.length;
         for (const p of problems) console.log(`FAIL [${phase}] ${p}`);
     } else {
-        console.log(`races covered [${phase}]: ${seen.size}/${RACE_COUNT}`);
+        console.log(`races covered [${phase}]: ${seen.size}/${RACE_COUNT}, max HP as expected for race and level`);
     }
 }
 
@@ -197,18 +209,18 @@ async function grant(): Promise<void> {
     }));
     saved.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     writeFileSync(statePath, JSON.stringify(saved, null, 1));
-    checkRaces('before restart', saved.map((c) => ({ name: c.name, race: c.state.raceId, maxHp: c.state.maxHp })));
+    checkRaces('before restart', saved.map((c) => ({ name: c.name, race: c.state.raceId, level: c.state.level, maxHp: c.state.maxHp })));
 }
 
 async function verify(): Promise<void> {
     const saved: SavedClient[] = JSON.parse(readFileSync(statePath, 'utf8'));
-    const seen: { name: string; race: number; maxHp: number }[] = [];
+    const seen: { name: string; race: number; level: number; maxHp: number }[] = [];
     await Promise.all(saved.map(async (c) => {
         const bot = new Bot(c.id, c.name);
         // A save exists now: a creation block for another race must be ignored (the race is immutable).
         await bot.connect(creationFor(c.creation.hairStyleIndex + 1, (c.race + 1) % RACE_COUNT));
         report(c.name, 'after server restart (loaded from disk)', c.state, bot.initial);
-        if (bot.initial) seen.push({ name: c.name, race: bot.initial.raceId, maxHp: bot.initial.maxHp });
+        if (bot.initial) seen.push({ name: c.name, race: bot.initial.raceId, level: bot.initial.level, maxHp: bot.initial.maxHp });
         await bot.close();
     }));
     checkRaces('after restart', seen);
