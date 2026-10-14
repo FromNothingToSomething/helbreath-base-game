@@ -86,13 +86,13 @@ jobs:
       - name: Build HEAD server
         run: |
           dotnet build multiplayer/server/Server.csproj --configuration Release --output "$RUNNER_TEMP/server-head"
-          cp -r multiplayer/server/Config "$RUNNER_TEMP/server-head/Config"
+          tools/noc-e2e/run.sh stage "$RUNNER_TEMP/server-head" multiplayer/server/Config
 
       - name: Build base server (upstream commit)
         run: |
           git worktree add "$RUNNER_TEMP/base-src" "$BASE_REF"
           dotnet build "$RUNNER_TEMP/base-src/multiplayer/server/Server.csproj" --configuration Release --output "$RUNNER_TEMP/server-base"
-          cp -r "$RUNNER_TEMP/base-src/multiplayer/server/Config" "$RUNNER_TEMP/server-base/Config"
+          tools/noc-e2e/run.sh stage "$RUNNER_TEMP/server-base" "$RUNNER_TEMP/base-src/multiplayer/server/Config"
 
       - name: Load, base
         run: tools/noc-e2e/run.sh load "$RUNNER_TEMP/server-base" base "$CLIENTS" "$RAMP" "$HOLD"

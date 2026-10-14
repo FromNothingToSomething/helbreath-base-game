@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # T21 orchestration (CI only, nightly workflow noc-e2e.yml). Run from the repository root.
 #
+#   run.sh stage <server_dir> <config_src>                           -> copies <config_src> (the repository's Config/) into <server_dir>/Config and verifies it
 #   run.sh load  <server_dir> <label> <clients> <ramp_s> <hold_s>   -> $OUT/<label>.txt = sustainedConnectedClients
 #   run.sh state <server_dir> <clients>                              -> grant, graceful restart, verify (exit 1 on mismatch)
 #   run.sh compare <base.txt> <head.txt> <tolerance_pct>             -> exit 1 when |head-base| > tolerance% of base
 #
-# <server_dir> holds the built Server.dll and its Config/ directory; the server runs there (Chars/ is created there).
+# <server_dir> holds the built Server.dll and its Config/ directory; the server runs there (Chars/ is created there):
+# every path the server reads is relative to its working directory (Config/*.json, Config/Nocthemar/*.json, Config/maps/*.amd, Chars/).
+# `stage` must have run on <server_dir> first: the build output may already contain a Config/ (the Web SDK copies the *.json files but not
+# the maps), so a plain `cp -r Config <server_dir>/Config` would nest the copy as Config/Config and leave the maps out.
 set -uo pipefail
 
 OUT="${OUT:-$PWD/e2e-out}"
@@ -13,7 +17,16 @@ PORT=1337
 mkdir -p "$OUT"
 SERVER_PID=""
 
+# The server reads Config/ relative to its working directory; fail here, with a clear message, rather than in its startup.
+check_server_dir() { # dir
+  [ -f "$1/Server.dll" ] || { echo "::error::$1/Server.dll not found"; return 1; }
+  for f in Config/Settings.json Config/GameWorlds.json Config/maps/2ndmiddle.amd; do
+    [ -f "$1/$f" ] || { echo "::error::$1/$f not found; was 'run.sh stage' run on this directory?"; ls -R "$1/Config" 2>/dev/null | head -n 20; return 1; }
+  done
+}
+
 start_server() { # dir logfile
+  check_server_dir "$1" || return 1
   (cd "$1" && exec dotnet Server.dll) >"$2" 2>&1 &
   SERVER_PID=$!
   for _ in $(seq 1 120); do
@@ -35,6 +48,18 @@ trap stop_server EXIT
 
 cmd="${1:-}"; shift || true
 case "$cmd" in
+  stage)
+    dir="$1"; src="$2"
+    [ -d "$src/maps" ] || { echo "::error::$src has no maps/ directory"; exit 1; }
+    src=$(cd "$src" && pwd) # absolute: the comparison below runs from inside $src
+    mkdir -p "$dir/Config"
+    cp -a "$src/." "$dir/Config/" || { echo "::error::could not copy $src into $dir/Config"; exit 1; }
+    differing=$(cd "$src" && find . -type f | while read -r f; do cmp -s "$src/$f" "$dir/Config/$f" || echo "$f"; done)
+    if [ -n "$differing" ]; then echo "::error::missing or different in $dir/Config:"; echo "$differing" | head -n 20; exit 1; fi
+    [ ! -e "$dir/Config/Config" ] || { echo "::error::$dir/Config/Config exists (nested copy)"; exit 1; }
+    check_server_dir "$dir" || exit 1
+    echo "staged $(cd "$src" && find . -type f | wc -l) files into $dir/Config ($(ls "$dir/Config/maps" | wc -l) maps), Server.dll present"
+    ;;
   load)
     dir="$1"; label="$2"; clients="$3"; ramp="$4"; hold="$5"
     start_server "$dir" "$OUT/$label.server.log" || exit 1
