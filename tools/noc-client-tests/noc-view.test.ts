@@ -13,6 +13,9 @@ const snapshot = (over: Partial<NocSnapshot> = {}): NocSnapshot => ({
     mana: 40,
     maxMana: 160,
     raceId: 0,
+    classId: undefined,
+    skillPoints: 0,
+    skills: [],
     ...over,
 });
 

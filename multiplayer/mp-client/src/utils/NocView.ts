@@ -20,6 +20,12 @@ export interface NocViewModel {
     raceKey: string | null;
     /** Display name; `Race <id>` for an id this client does not know. */
     raceName: string;
+    /** Chosen class (Classes.json); null until one is chosen. */
+    classId: number | null;
+    /** Skill points earned and not spent. */
+    skillPoints: number;
+    /** Ids of the learned skills, ascending. */
+    skills: number[];
 }
 
 const clamp01 = (value: number): number => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0);
@@ -41,5 +47,8 @@ export function toNocViewModel(snapshot: NocSnapshot): NocViewModel {
         raceId: snapshot.raceId,
         raceKey: getRace(snapshot.raceId)?.key ?? null,
         raceName: raceName(snapshot.raceId),
+        classId: snapshot.classId ?? null,
+        skillPoints: snapshot.skillPoints,
+        skills: [...snapshot.skills],
     };
 }

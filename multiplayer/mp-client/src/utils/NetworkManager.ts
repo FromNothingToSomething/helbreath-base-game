@@ -62,12 +62,15 @@ import {
 import type { NocCharacterCreation, NocSnapshot } from '../proto/generated/nocthemar';
 import { encodeAuthenticateRequest } from './Authentication';
 import { toNocViewModel } from './NocView';
+import { toCatalogModel } from './NocCatalogView';
 import { EventBus, type ToastRequestedEvent } from '../game/EventBus';
 import { LOAD_PLAYER_ITEM_APPEARANCE_ASSETS_ON_DEMAND } from '../Config';
 import { runSafeSync } from './SafeEntry';
 import {
     NOC_STATE_RECEIVED,
     NOC_STATE_RESET,
+    NOC_CATALOG_RECEIVED,
+    NOC_ACTION_REFUSED_RECEIVED,
     CAST_AOE_SPELL_RECEIVED,
     CAST_DIRECTIONAL_AOE_SPELL_RECEIVED,
     MONSTER_CAST_AOE_SPELL_RECEIVED,
@@ -913,6 +916,27 @@ export class NetworkManager {
         this.sendPacket(command);
     }
 
+    /** Chooses the class once; refused by the server (NocActionRefused) when one is already chosen. */
+    public sendNocChooseClassRequest(classId: number): void {
+        this.sendNocPayload({ $case: 'nocChooseClassRequest', value: { classId } });
+    }
+
+    public sendNocLearnSkillRequest(skillId: number): void {
+        this.sendNocPayload({ $case: 'nocLearnSkillRequest', value: { skillId } });
+    }
+
+    /** Debug only: the server ignores it unless Settings.json nocthemar.debug is true. */
+    public sendNocRespecRequest(): void {
+        this.sendNocPayload({ $case: 'nocRespecRequest', value: {} });
+    }
+
+    private sendNocPayload(payload: NonNullable<Parameters<typeof ClientMessage.encode>[0]['payload']>): void {
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        this.sendPacket(ClientMessage.encode({ payload }).finish());
+    }
+
     public sendKillAllNpcsRequest(): void {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             return;
@@ -1306,6 +1330,9 @@ export class NetworkManager {
                 case 'nocStateUpdated':
                     this.handleNocSnapshot(message.payload.value.state);
                     break;
+                case 'nocActionRefused':
+                    EventBus.emit(NOC_ACTION_REFUSED_RECEIVED, { reason: message.payload.value.reason });
+                    break;
                 case 'playerDied':
                     this.handlePlayerDied(message.payload.value);
                     break;
@@ -1387,6 +1414,9 @@ export class NetworkManager {
     private handleInitialState(data: InitialState): void {
         this.selfPlayerId = String(data.playerId);
         this.handleNocSnapshot(data.noc);
+        if (data.nocCatalog) {
+            EventBus.emit(NOC_CATALOG_RECEIVED, toCatalogModel(data.nocCatalog));
+        }
         this.npcDirectoryByCatalogId.clear();
         for (const row of data.npcDirectory) {
             this.npcDirectoryByCatalogId.set(row.id, row.name);

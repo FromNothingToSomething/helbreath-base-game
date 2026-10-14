@@ -120,6 +120,10 @@ export const MONSTER_ATTACKED_MONSTER_RECEIVED = 'monster-attacked-monster-recei
 export const PLAYER_RECEIVE_DAMAGE_RECEIVED = 'player-receive-damage-received';
 /** Self player only: authoritative level/XP/mana (InitialState.noc and NocStateUpdated). Payload: NocViewModel */
 export const NOC_STATE_RECEIVED = 'noc-state-received';
+/** Static classes and skills, once per session (InitialState.noc_catalog). Payload: CatalogModel */
+export const NOC_CATALOG_RECEIVED = 'noc-catalog-received';
+/** A class/skill request was refused by the server. Payload: { reason: string } */
+export const NOC_ACTION_REFUSED_RECEIVED = 'noc-action-refused-received';
 /** Connection closed or left: clear the level/XP/mana HUD. No payload. */
 export const NOC_STATE_RESET = 'noc-state-reset';
 /** Self player only: authoritative HP/max after monster hit. Payload: { hp: number; maxHp: number } */
