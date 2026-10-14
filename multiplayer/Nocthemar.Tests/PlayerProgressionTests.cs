@@ -21,7 +21,8 @@ public class PlayerProgressionTests {
             new MovementSpeedViolationCheckConfig(false, 5, 20, 20, 10, 50),
             20,
             0.05,
-            Config);
+            Config,
+            TestSupport.NeutralRaces());
         player.SetInitialState(5, 6);
         return player;
     }
@@ -51,7 +52,7 @@ public class PlayerProgressionTests {
         var state = NewPlayer().CreatePersistenceState("aresden");
 
         Assert.Equal(CharacterSchema.Current, state.SchemaVersion);
-        Assert.Equal(new NocState(NocState.CurrentV, 1, 0, 100), state.Noc);
+        Assert.Equal(new NocState(NocState.CurrentV, 1, 0, 100, RaceId: 0), state.Noc);
     }
 
     [Fact]

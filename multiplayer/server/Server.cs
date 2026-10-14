@@ -35,10 +35,11 @@ var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 var settings = await Config.LoadSettings();
 var gcMonitor = settings.Debug.EnableGcLogs ? new GarbageCollectorMonitor() : null;
 var progression = await ProgressionConfig.LoadAsync();
+var races = await RaceConfig.LoadAsync();
 var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");
 // Fails fast on an unusable persistence.provider, before any world worker starts.
 var characterStore = CharacterStoreFactory.Create(settings.Persistence, charsDirectory, progression);
-var worldRegistry = new WorldRegistry(settings, progression, workerCount: settings.Threads.GameWorldWorkers, tickInterval: TimeSpan.FromMilliseconds(settings.GameWorld.TickInterval));
+var worldRegistry = new WorldRegistry(settings, progression, races, workerCount: settings.Threads.GameWorldWorkers, tickInterval: TimeSpan.FromMilliseconds(settings.GameWorld.TickInterval));
 var sessionsByNetworkId = new ConcurrentDictionary<string, PlayerSession>(StringComparer.Ordinal);
 var sessionsByServerId = new ConcurrentDictionary<Guid, PlayerSession>();
 
@@ -258,7 +259,7 @@ app.Map("/ws", async context => {
                 PlayerPersistenceState? loadedPlayerState = null;
                 if (!isReconnect) {
                     string? loadRefusal;
-                    (loadedPlayerState, loadRefusal) = await CharacterAccess.TryLoadAsync(characterStore, session.NetworkId, receiveCts.Token);
+                    (loadedPlayerState, loadRefusal) = await CharacterAccess.TryLoadAsync(characterStore, session.NetworkId, receiveCts.Token, races: races);
                     if (loadRefusal is not null) {
                         // The session was registered by TryAuthenticatePlayer but never joined a world: release it, and leave the save untouched.
                         sessionsByNetworkId.TryRemove(new KeyValuePair<string, PlayerSession>(session.NetworkId, session));

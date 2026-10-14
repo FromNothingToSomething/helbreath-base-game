@@ -13,8 +13,15 @@ internal static class TestSupport {
 
     public static ProgressionConfig Progression() => ProgressionConfig.Parse(ProgressionJson);
 
+    /// <summary>One race without any modifier: players built with it behave exactly as before races existed (the default of <see cref="NewPlayer(List{ServerMessage}?, RaceConfig?)"/>).</summary>
+    public static RaceConfig NeutralRaces() => RaceConfig.Parse(
+        """{"schemaVersion":1,"defaultRaceId":0,"races":[{"id":0,"key":"neutral","name":"Neutral","modifiers":[],"traits":[],"appearance":{"genders":[0,1],"skinColors":[0,1,2],"hairStyles":[0,1,2,3,4,5,6,7],"underwearColors":[0,1,2,3,4,5,6,7]},"art":{"native":true}}]}""");
+
+    /// <summary>The shipped Config/Nocthemar/Races.json (linked into the test output).</summary>
+    public static RaceConfig ShippedRaces() => RaceConfig.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Races.json")));
+
     /// <summary>A player outside any world, spawned with the level-1 defaults; messages sent to it are appended to <paramref name="sent"/> when given.</summary>
-    public static GameWorldPlayer NewPlayer(List<ServerMessage>? sent = null) {
+    public static GameWorldPlayer NewPlayer(List<ServerMessage>? sent = null, RaceConfig? races = null) {
         Action<ServerMessage> send = sent is null ? Discard : sent.Add;
         var player = new GameWorldPlayer(
             Guid.NewGuid(),
@@ -26,7 +33,8 @@ internal static class TestSupport {
             new MovementSpeedViolationCheckConfig(false, 5, 20, 20, 10, 50),
             20,
             0.05,
-            Progression());
+            Progression(),
+            races ?? NeutralRaces());
         player.SetInitialState(5, 6);
         return player;
     }
@@ -35,8 +43,8 @@ internal static class TestSupport {
     }
 
     /// <summary>A player restored from a save carrying the given level, XP and mana.</summary>
-    public static GameWorldPlayer NewPlayer(int level, long xp, int mana, List<ServerMessage>? sent = null) {
-        var player = NewPlayer(sent);
+    public static GameWorldPlayer NewPlayer(int level, long xp, int mana, List<ServerMessage>? sent = null, RaceConfig? races = null) {
+        var player = NewPlayer(sent, races);
         player.ApplyPersistedState(new PlayerPersistenceState(
             "aresden", 1, 2, 300, 1000, 600, 1, 20, 500, 0, false, false, false,
             CharacterName: "T", SchemaVersion: CharacterSchema.Current, Noc: new NocState(NocState.CurrentV, level, xp, mana)));

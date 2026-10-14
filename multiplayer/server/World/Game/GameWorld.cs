@@ -171,6 +171,7 @@ public sealed class GameWorld : IWorkerWorld {
     private readonly IReadOnlyDictionary<int, ItemConfig> itemsById;
     private readonly IReadOnlyDictionary<int, NpcConfig> npcsById;
     private readonly ProgressionConfig progression;
+    private readonly RaceConfig races;
     private readonly NocDispatcher nocDispatcher;
     private readonly Dictionary<long, GameWorldMonster> monstersByMonsterId = new();
     private readonly Dictionary<long, GameWorldNPC> npcsByNpcId = new();
@@ -198,6 +199,7 @@ public sealed class GameWorld : IWorkerWorld {
         IReadOnlyDictionary<int, ItemConfig> itemsById,
         IReadOnlyDictionary<int, NpcConfig> npcsById,
         ProgressionConfig progression,
+        RaceConfig races,
         IReadOnlyList<GameWorldDwellAreaConfig>? dwellAreas = null,
         IReadOnlyList<GameWorldTeleportSet>? teleportLocs = null,
         IReadOnlyList<GameWorldNpcPlacementConfig>? initialNpcs = null) {
@@ -215,6 +217,7 @@ public sealed class GameWorld : IWorkerWorld {
         ArgumentNullException.ThrowIfNull(itemsById);
         ArgumentNullException.ThrowIfNull(npcsById);
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
+        this.races = races ?? throw new ArgumentNullException(nameof(races));
         nocDispatcher = new NocDispatcher(settings.Nocthemar?.Debug ?? false);
         this.monsterCatalog = monsterCatalog;
         this.monstersById = monstersById;
@@ -1207,7 +1210,8 @@ public sealed class GameWorld : IWorkerWorld {
             settings.MovementSpeedViolationsChecker,
             settings.Ping.VarianceSampleSize,
             settings.Timings.AntiHackTimingLagFactor,
-            progression);
+            progression,
+            races);
         player.SetInitialState(spawnLocation.X, spawnLocation.Y);
         occupancyTracker.SetOccupied(spawnLocation.X, spawnLocation.Y);
         playersBySessionId[sessionId] = player;

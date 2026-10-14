@@ -45,7 +45,10 @@ public class GameWorldPlayer : GameWorldActionableEntity {
     private NocState noc;
     private readonly StatPipeline stats;
     private readonly ProgressionConfig progression;
+    private readonly RaceConfig races;
     private readonly ProgressionService progressionService;
+    /// <summary>Race whose modifiers are currently in <see cref="stats"/> (source <c>ModifierSources.Race</c>); never null after construction.</summary>
+    private RaceDefinition race;
     /// <summary>Current mana; clamped to [0, <see cref="MaxMana"/>].</summary>
     private int mana;
     private int movementSpeedMs = 220;
@@ -204,8 +207,10 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         Server.MovementSpeedViolationCheckConfig violationCheckConfig,
         int pingVarianceSampleSize,
         double antiHackTimingLagFactor,
-        ProgressionConfig progression) {
+        ProgressionConfig progression,
+        RaceConfig races) {
         ArgumentNullException.ThrowIfNull(progression);
+        ArgumentNullException.ThrowIfNull(races);
         ArgumentNullException.ThrowIfNull(sendMessage);
         ArgumentNullException.ThrowIfNull(requestDisconnect);
         ArgumentNullException.ThrowIfNull(requestWorldChange);
@@ -223,6 +228,10 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         progressionService = new ProgressionService(progression);
         noc = progressionService.Normalize(null);
         stats = new StatPipeline(progression, noc.Level);
+        this.races = races;
+        race = races.Default;
+        AddRaceModifiers(race);
+        noc = noc with { RaceId = race.Id };
         playerPingTracker = new PlayerPingTracker(pingVarianceSampleSize);
         movementSpeedViolations = CreateMovementSpeedViolationsLimiter(violationCheckConfig);
         SetFacingDirection(1);
@@ -366,11 +375,54 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         SetGridPosition(x, y);
         ApplyNocState(progressionService.Normalize(null));
         hp = maxHp;
+        mana = stats.MaxMana; // a new character starts with full mana, whatever its race does to the maximum
     }
 
-    /// <summary>Adopts a (normalized) level/XP/mana block: refreshes the stat base, <see cref="maxHp"/> and clamps HP and mana to the new maxima.</summary>
+    /// <summary>Id of the player's race (<c>Races.json</c>); always a listed race.</summary>
+    public int RaceId => race.Id;
+
+    /// <summary>
+    /// Switches the race: the previous race's modifiers are removed and the new ones added in one step (calling it again with the same race changes nothing),
+    /// then max HP and mana are recomputed and HP and mana are clamped to the new maxima (they are never raised here).
+    /// Marks the progression and HP state dirty when something observable changed, so the next tick tells the client.
+    /// </summary>
+    public void ApplyRace(RaceDefinition newRace) {
+        ArgumentNullException.ThrowIfNull(newRace);
+        var oldMaxHp = maxHp;
+        var oldHp = hp;
+        if (!ApplyRaceCore(newRace)) {
+            return;
+        }
+
+        nocDirty = true;
+        hpDirty |= maxHp != oldMaxHp || hp != oldHp;
+    }
+
+    /// <summary>Returns true when the race, max HP, HP or mana changed.</summary>
+    private bool ApplyRaceCore(RaceDefinition newRace) {
+        var oldRaceId = race.Id;
+        var oldMaxHp = maxHp;
+        var oldHp = hp;
+        var oldMana = mana;
+        stats.RemoveSource(race.SourceId);
+        race = newRace;
+        AddRaceModifiers(newRace);
+        noc = noc with { RaceId = newRace.Id };
+        maxHp = stats.MaxHp;
+        hp = Math.Min(hp, maxHp);
+        mana = Math.Clamp(mana, 0, stats.MaxMana);
+        return oldRaceId != newRace.Id || oldMaxHp != maxHp || oldHp != hp || oldMana != mana;
+    }
+
+    private void AddRaceModifiers(RaceDefinition definition) {
+        foreach (var modifier in definition.Modifiers) {
+            stats.Add(modifier);
+        }
+    }
+
+    /// <summary>Adopts a (normalized) level/XP/mana block: refreshes the stat base, <see cref="maxHp"/> and clamps HP and mana to the new maxima. The race id always follows <see cref="race"/>.</summary>
     private void ApplyNocState(NocState state) {
-        noc = state;
+        noc = state with { RaceId = race.Id };
         stats.SetLevel(noc.Level);
         maxHp = stats.MaxHp;
         hp = Math.Min(hp, maxHp);
@@ -521,6 +573,9 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         if (!string.IsNullOrWhiteSpace(state.CharacterName)) {
             SetCharacterName(state.CharacterName);
         }
+        // The save layer already replaced an unknown race id (CharacterAccess.TryLoadAsync, with a warning naming the character); this is only the last line of defence.
+        var restoredRace = state.Noc?.RaceId is int savedRaceId && races.TryGet(savedRaceId, out var found) ? found : races.Default;
+        ApplyRaceCore(restoredRace);
         if (state.Noc is not null) {
             // Absent block (legacy save already migrated, or a state built without one) keeps the level-1 defaults from SetInitialState.
             ApplyNocState(progressionService.Normalize(state.Noc));

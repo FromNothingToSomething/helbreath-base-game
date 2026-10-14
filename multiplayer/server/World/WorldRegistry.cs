@@ -15,6 +15,7 @@ public sealed class WorldRegistry : IDisposable {
     private readonly WorldWorker[] workers;
     private readonly SettingsConfig settings;
     private readonly ProgressionConfig progression;
+    private readonly RaceConfig races;
     /// <summary>Round-robin counter for assigning new worlds when no explicit worker index is configured.</summary>
     private int nextWorkerIndex;
     private bool disposed;
@@ -22,10 +23,12 @@ public sealed class WorldRegistry : IDisposable {
     public WorldRegistry(
         SettingsConfig settings,
         ProgressionConfig progression,
+        RaceConfig races,
         int workerCount,
         TimeSpan tickInterval) {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(progression);
+        ArgumentNullException.ThrowIfNull(races);
         if (workerCount <= 0) {
             throw new ArgumentOutOfRangeException(nameof(workerCount), "Worker count must be greater than zero.");
         }
@@ -34,6 +37,7 @@ public sealed class WorldRegistry : IDisposable {
         workers = new WorldWorker[workerCount];
         this.settings = settings;
         this.progression = progression;
+        this.races = races;
 
         for (var index = 0; index < workerCount; index++) {
             workers[index] = new WorldWorker($"game-world-worker-{index}", tickInterval);
@@ -66,7 +70,7 @@ public sealed class WorldRegistry : IDisposable {
         ArgumentNullException.ThrowIfNull(itemsById);
         ArgumentNullException.ThrowIfNull(npcsById);
 
-        var world = new GameWorld(id, map, music, occupancyTracker, settings, monsterCatalog, monstersById, spellsById, itemsById, npcsById, progression, dwellAreas, teleportLocs, initialNpcs);
+        var world = new GameWorld(id, map, music, occupancyTracker, settings, monsterCatalog, monstersById, spellsById, itemsById, npcsById, progression, races, dwellAreas, teleportLocs, initialNpcs);
         if (!gameWorldsById.TryAdd(id, world)) {
             throw new InvalidOperationException($"A game world with id '{id}' is already registered.");
         }
