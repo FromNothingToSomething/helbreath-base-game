@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Mmorpg.Network;
+using Server.Nocthemar.Core;
 using Server;
 using Server.World;
 using Server.Utils;
@@ -325,7 +326,7 @@ public static class Casting {
                 continue;
             }
 
-            Combat.ApplyPlayerDamageToPlayer(wr, caster, targetPlayer, attackType);
+            Combat.ApplyPlayerDamageToPlayer(wr, caster, targetPlayer, attackType, DamageSchool.Magic);
             TemporaryEffects.ApplySpellTemporaryEffectsOnHit(wr, spell, targetPlayer);
         }
 
@@ -356,7 +357,7 @@ public static class Casting {
                 continue;
             }
 
-            Combat.ApplyPlayerDamageToPlayer(wr, caster, targetPlayer, attackType);
+            Combat.ApplyPlayerDamageToPlayer(wr, caster, targetPlayer, attackType, DamageSchool.Magic);
             TemporaryEffects.ApplySpellTemporaryEffectsOnHit(wr, spell, targetPlayer);
         }
 

@@ -19,8 +19,8 @@ public sealed record SkillPointsFile(int FirstLevel = ProgressionConfig.DefaultS
 /// <summary>XP needed to go from level L to L+1 is <c>round(Base * L^Exponent)</c>.</summary>
 public sealed record XpCurveFile(double Base = 0, double Exponent = 0);
 
-/// <summary>Max HP at level L is <c>Base + PerLevel * (L - 1)</c>.</summary>
-public sealed record HpCurveFile(int Base = 0, int PerLevel = -1);
+/// <summary>Max HP at level L is <c>Base + PerLevel * (L - 1)</c>; <c>RegenPerSecond</c> (optional, default 0 = none) is the HP regained per second out of combat.</summary>
+public sealed record HpCurveFile(int Base = 0, int PerLevel = -1, double RegenPerSecond = 0);
 
 /// <summary>Max mana at level L is <c>Base + PerLevel * (L - 1)</c>; regeneration is per second.</summary>
 public sealed record ManaCurveFile(int Base = -1, int PerLevel = -1, double RegenPerSecond = -1);
@@ -51,7 +51,7 @@ public sealed class ProgressionConfig {
 
     private ProgressionConfig(
         int maxLevel, long[] xpToNext, int hpBase, int hpPerLevel, int manaBase, int manaPerLevel,
-        double manaRegenPerSecond, int defaultMonsterXp, int skillPointsFirstLevel, int skillPointsPerLevel) {
+        double manaRegenPerSecond, int defaultMonsterXp, int skillPointsFirstLevel, int skillPointsPerLevel, double hpRegenPerSecond) {
         MaxLevel = maxLevel;
         this.xpToNext = xpToNext;
         this.hpBase = hpBase;
@@ -62,6 +62,7 @@ public sealed class ProgressionConfig {
         DefaultMonsterXp = defaultMonsterXp;
         SkillPointsFirstLevel = skillPointsFirstLevel;
         SkillPointsPerLevel = skillPointsPerLevel;
+        HpRegenPerSecond = hpRegenPerSecond;
     }
 
     public int MaxLevel { get; }
@@ -69,6 +70,9 @@ public sealed class ProgressionConfig {
     public int DefaultMonsterXp { get; }
     public int SkillPointsFirstLevel { get; }
     public int SkillPointsPerLevel { get; }
+
+    /// <summary>HP regained per second out of combat (base of <see cref="Server.Nocthemar.Core.StatId.HpRegen"/>); 0 = no regeneration.</summary>
+    public double HpRegenPerSecond { get; }
 
     /// <summary>Total skill points a character of <paramref name="level"/> has earned (spent ones included): 0 below <see cref="SkillPointsFirstLevel"/>, then <see cref="SkillPointsPerLevel"/> per level up to <see cref="MaxLevel"/>.</summary>
     public int SkillPointsAt(int level) => SkillPointsPerLevel * Math.Max(0, ClampLevel(level) - SkillPointsFirstLevel + 1);
@@ -149,6 +153,10 @@ public sealed class ProgressionConfig {
             if (file.Hp.PerLevel < 0) {
                 errors.Add($"hp.perLevel must be >= 0 (got {file.Hp.PerLevel}; missing?)");
             }
+
+            if (!(file.Hp.RegenPerSecond >= 0) || !double.IsFinite(file.Hp.RegenPerSecond) || file.Hp.RegenPerSecond > 100_000) {
+                errors.Add($"hp.regenPerSecond must be a finite number in [0, 100000] (got {file.Hp.RegenPerSecond})");
+            }
         }
 
         if (file.Mana is null) {
@@ -200,7 +208,7 @@ public sealed class ProgressionConfig {
 
         return new ProgressionConfig(
             file.MaxLevel, table, file.Hp!.Base, file.Hp.PerLevel, file.Mana!.Base, file.Mana.PerLevel,
-            file.Mana.RegenPerSecond, file.DefaultMonsterXp, skillPoints.FirstLevel, skillPoints.PerLevel);
+            file.Mana.RegenPerSecond, file.DefaultMonsterXp, skillPoints.FirstLevel, skillPoints.PerLevel, file.Hp.RegenPerSecond);
     }
 
     /// <summary>Builds the per-level XP table and verifies it is strictly increasing, positive, and bounded (rounding can flatten a curve with a tiny base or exponent).</summary>

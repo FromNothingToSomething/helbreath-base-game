@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Mmorpg.Network;
+using Server.Nocthemar.Core;
 using Server;
 using Server.World;
 using Server.Utils;
@@ -201,7 +202,9 @@ public static class MonsterVisibility {
         int destX = -1,
         int destY = -1,
         int? knockbackFromX = null,
-        int? knockbackFromY = null) {
+        int? knockbackFromY = null,
+        DamageSchool school = DamageSchool.Physical) {
+        damage = MitigateForTarget(wr, targetPlayerId, damage, school);
         var combatMessage = NetworkManager.CreatePlayerReceiveDamage(
             targetPlayerId,
             damage,
@@ -239,7 +242,9 @@ public static class MonsterVisibility {
         int destX = -1,
         int destY = -1,
         int? knockbackFromX = null,
-        int? knockbackFromY = null) {
+        int? knockbackFromY = null,
+        DamageSchool school = DamageSchool.Physical) {
+        damage = MitigateForTarget(wr, targetPlayerId, damage, school);
         var combatMessage = NetworkManager.CreatePlayerTakeDamage(
             targetPlayerId,
             damage,
@@ -263,6 +268,11 @@ public static class MonsterVisibility {
             knockbackFromX,
             knockbackFromY,
             combatMessage);
+    }
+
+    /// <summary>The damage the target actually takes after its armor and resistances; the broadcast message carries this value, so clients show what was really lost.</summary>
+    private static int MitigateForTarget(GameWorldRef wr, long targetPlayerId, int damage, DamageSchool school) {
+        return wr.World.TryGetConnectedPlayerById(targetPlayerId, out var target) ? target.MitigateDamage(damage, school) : damage;
     }
 
     private static void BroadcastCombatDamageToPlayer(

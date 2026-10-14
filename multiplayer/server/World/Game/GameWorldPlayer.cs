@@ -781,6 +781,79 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         }
 
         hp = Math.Max(0, hp - damage);
+        damagedSinceLastHpTick = true;
+    }
+
+    /// <summary>Damage the player takes from a hit of <paramref name="damage"/> after armor and resistances (see <see cref="DamageMitigation"/>); equals <paramref name="damage"/> without modifiers.</summary>
+    public int MitigateDamage(int damage, DamageSchool school) => DamageMitigation.Apply(damage, school, stats);
+
+    /// <summary>
+    /// Heals by <paramref name="amount"/> scaled by <see cref="StatId.HealReceivedMult"/> (rounded half away from zero), up to max HP. The dead cannot be healed (resurrection is not a heal).
+    /// Returns the HP actually regained and tells the client at the next tick.
+    /// </summary>
+    public int Heal(int amount) {
+        if (amount <= 0 || IsDead || hp >= maxHp) {
+            return 0;
+        }
+
+        var scaled = (int)Math.Min(int.MaxValue, Math.Round(amount * stats.HealReceivedMult, MidpointRounding.AwayFromZero));
+        var gained = Math.Min(scaled, maxHp - hp);
+        if (gained <= 0) {
+            return 0;
+        }
+
+        hp += gained;
+        hpDirty = true;
+        return gained;
+    }
+
+    /// <summary>HP regeneration only starts this long after the last damage taken.</summary>
+    public const long OutOfCombatDelayMs = 5000;
+
+    /// <summary>Upper bound on the time credited to one <see cref="TickHp"/> call (same rule as mana).</summary>
+    private const long MaxHpTickDeltaMs = 5000;
+    private long lastHpTickMs;
+    private long lastDamageSeenMs;
+    private bool damagedSinceLastHpTick;
+    private double hpFraction;
+
+    /// <summary>
+    /// Regenerates HP by elapsed time (<see cref="StatId.HpRegen"/> per second) once <see cref="OutOfCombatDelayMs"/> passed without damage; sub-point remainders are carried over.
+    /// The first call only sets the time baseline. The dead do not regenerate. Allocation-free; world thread only. Returns true when HP changed.
+    /// </summary>
+    public bool TickHp(long nowMs) {
+        var last = lastHpTickMs;
+        lastHpTickMs = nowMs;
+        if (damagedSinceLastHpTick) {
+            lastDamageSeenMs = nowMs;
+            damagedSinceLastHpTick = false;
+            hpFraction = 0;
+        }
+
+        if (last == 0 || nowMs <= last) {
+            return false;
+        }
+
+        if (IsDead || hp >= maxHp) {
+            hpFraction = 0;
+            return false;
+        }
+
+        var regen = stats.HpRegen;
+        if (!(regen > 0) || nowMs - lastDamageSeenMs < OutOfCombatDelayMs) {
+            return false;
+        }
+
+        hpFraction += regen * Math.Min(nowMs - last, MaxHpTickDeltaMs) / 1000.0;
+        var gained = (int)Math.Min(hpFraction, maxHp - hp);
+        if (gained <= 0) {
+            return false;
+        }
+
+        hpFraction -= gained;
+        hp += gained;
+        hpDirty = true;
+        return true;
     }
 
     /// <summary>Invoked from combat fan-out after HP loss; clears pending timed logout server-side when applicable.</summary>

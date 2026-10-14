@@ -39,11 +39,13 @@ public enum StatId : byte {
     MimicDurationMult = 15,
     // consumer: module 3 (T46, probability of a critical hit; the base is StatPipeline.BaseCritChance)
     CritChance = 16,
+    // consumer: module 3 (T47, HP regained per second out of combat; the base is hp.regenPerSecond of Progression.json)
+    HpRegen = 17,
 }
 
 /// <summary>Number of <see cref="StatId"/> members (ids are contiguous from 0); keep equal to the last id + 1.</summary>
 public static class StatIds {
-    public const int Count = 17;
+    public const int Count = 18;
 }
 
 /// <summary>How a <see cref="StatModifier"/> combines with the base value.</summary>
@@ -99,6 +101,7 @@ public sealed class StatPipeline {
         baseValues[(int)StatId.MaxHp] = progression.MaxHpAt(Level);
         baseValues[(int)StatId.MaxMana] = progression.MaxManaAt(Level);
         baseValues[(int)StatId.ManaRegen] = progression.ManaRegenPerSecond;
+        baseValues[(int)StatId.HpRegen] = progression.HpRegenPerSecond;
         dirty = true;
     }
 
@@ -151,6 +154,10 @@ public sealed class StatPipeline {
     public double DamageMult => Get(StatId.DamageMult);
 
     public double XpGainMult => Get(StatId.XpGainMult);
+
+    public double HpRegen => Get(StatId.HpRegen);
+
+    public double HealReceivedMult => Get(StatId.HealReceivedMult);
 
     /// <summary>Probability of a critical hit, as a fraction; callers clamp it to [0, 1].</summary>
     public double CritChance => Get(StatId.CritChance);

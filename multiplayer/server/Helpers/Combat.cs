@@ -1,4 +1,5 @@
 using Mmorpg.Network;
+using Server.Nocthemar.Core;
 using Server;
 using Server.World;
 using Server.Utils;
@@ -345,7 +346,7 @@ public static class Combat {
     }
 
     /// <summary>Applies authoritative player damage to another player for non-melee sources (for example, server-resolved spells) while reusing normal damage, interrupt, and death fan-out.</summary>
-    public static void ApplyPlayerDamageToPlayer(GameWorldRef wr, GameWorldPlayer attacker, GameWorldPlayer targetPlayer, AttackType attackType) {
+    public static void ApplyPlayerDamageToPlayer(GameWorldRef wr, GameWorldPlayer attacker, GameWorldPlayer targetPlayer, AttackType attackType, DamageSchool school = DamageSchool.Physical) {
         ArgumentNullException.ThrowIfNull(attacker);
         ArgumentNullException.ThrowIfNull(targetPlayer);
 
@@ -353,7 +354,7 @@ public static class Combat {
             return;
         }
 
-        ApplyPlayerAttackToPlayer(wr, attacker, targetPlayer, attackType);
+        ApplyPlayerAttackToPlayer(wr, attacker, targetPlayer, attackType, school);
     }
 
     /// <summary>Applies spell damage from a monster to a player using explicit damage and spell hit mode; reuses monster melee knockback/stun rules with <paramref name="spellAttackType"/>.</summary>
@@ -418,7 +419,8 @@ public static class Combat {
             destKbX,
             destKbY,
             knockbackDurMs > 0 ? px : null,
-            knockbackDurMs > 0 ? py : null);
+            knockbackDurMs > 0 ? py : null,
+            DamageSchool.Magic);
     }
 
     /// <summary>Applies spell damage from a monster to another monster with explicit damage and spell hit mode.</summary>
@@ -583,7 +585,8 @@ public static class Combat {
             damage,
             attackerPlayerId,
             attackType,
-            stunDuration);
+            stunDuration,
+            school: DamageSchool.Magic);
 
         if (!targetPlayer.IsDead) {
             TryApplyGroundEffectSpellTemporaryEffectsAfterDamage(wr, spellId, targetPlayer);
@@ -732,7 +735,7 @@ public static class Combat {
         }
     }
 
-    private static void ApplyPlayerAttackToPlayer(GameWorldRef wr, GameWorldPlayer attacker, GameWorldPlayer targetPlayer, AttackType attackType) {
+    private static void ApplyPlayerAttackToPlayer(GameWorldRef wr, GameWorldPlayer attacker, GameWorldPlayer targetPlayer, AttackType attackType, DamageSchool school = DamageSchool.Physical) {
         var stunPacketMs = 0;
         var knockbackDurMs = 0;
         var destKbX = -1;
@@ -780,6 +783,7 @@ public static class Combat {
             destKbX,
             destKbY,
             knockbackDurMs > 0 ? px : null,
-            knockbackDurMs > 0 ? py : null);
+            knockbackDurMs > 0 ? py : null,
+            school);
     }
 }
