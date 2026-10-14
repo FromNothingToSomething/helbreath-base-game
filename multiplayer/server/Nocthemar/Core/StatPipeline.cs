@@ -2,12 +2,46 @@ using Server.Nocthemar.Data;
 
 namespace Server.Nocthemar.Core;
 
-/// <summary>Stats resolved by <see cref="StatPipeline"/>.</summary>
+/// <summary>
+/// Stats resolved by <see cref="StatPipeline"/>. Append-only: numeric values are never reused or renumbered, and <see cref="StatIds.Count"/> grows with the last member.
+/// Multiplier stats (suffix <c>Mult</c>) start at 1.0, so +15% is a <see cref="ModifierKind.PercentAdd"/> of 0.15; resistances start at 0.0 and take <see cref="ModifierKind.Flat"/> fractions (0.10 = 10%).
+/// A comment <c>// consumer: module N</c> marks a stat that is declared (races reference it) but not read by gameplay code yet; a test enforces it.
+/// </summary>
 public enum StatId : byte {
     MaxHp = 0,
     MaxMana = 1,
     ManaRegen = 2,
     DamageMult = 3,
+
+    // consumer: module 4
+    MagicDamageMult = 4,
+    // consumer: module 3
+    ArmorMult = 5,
+    // consumer: module 3
+    ResistPhysical = 6,
+    // consumer: module 3
+    ResistMagic = 7,
+    // consumer: module 4
+    ResistCurse = 8,
+    // consumer: module 3
+    ResistDeath = 9,
+    // consumer: module 3
+    CritDamageMult = 10,
+    // consumer: module 3
+    MoveSpeedMult = 11,
+    // consumer: module 3
+    HealReceivedMult = 12,
+    // consumer: module 2 (T27, XP of kills)
+    XpGainMult = 13,
+    // consumer: module 4
+    ManaCostMult = 14,
+    // consumer: module 4
+    MimicDurationMult = 15,
+}
+
+/// <summary>Number of <see cref="StatId"/> members (ids are contiguous from 0); keep equal to the last id + 1.</summary>
+public static class StatIds {
+    public const int Count = 16;
 }
 
 /// <summary>How a <see cref="StatModifier"/> combines with the base value.</summary>
@@ -31,7 +65,10 @@ public readonly record struct StatModifier(StatId Stat, ModifierKind Kind, doubl
 /// Not thread-safe: use it from the owning world thread only.
 /// </summary>
 public sealed class StatPipeline {
-    private const int StatCount = 4;
+    private const int StatCount = StatIds.Count;
+
+    /// <summary>Level-independent bases: multipliers start at 1.0, everything else at 0.</summary>
+    private static readonly double[] StaticBases = CreateStaticBases();
 
     private readonly ProgressionConfig progression;
     private readonly double[] baseValues = new double[StatCount];
@@ -53,10 +90,10 @@ public sealed class StatPipeline {
     /// <summary>Resets the level-derived base values (HP, mana, regen); modifiers are kept.</summary>
     public void SetLevel(int level) {
         Level = progression.ClampLevel(level);
+        StaticBases.CopyTo(baseValues, 0);
         baseValues[(int)StatId.MaxHp] = progression.MaxHpAt(Level);
         baseValues[(int)StatId.MaxMana] = progression.MaxManaAt(Level);
         baseValues[(int)StatId.ManaRegen] = progression.ManaRegenPerSecond;
-        baseValues[(int)StatId.DamageMult] = 1.0;
         dirty = true;
     }
 
@@ -108,6 +145,8 @@ public sealed class StatPipeline {
 
     public double DamageMult => Get(StatId.DamageMult);
 
+    public double XpGainMult => Get(StatId.XpGainMult);
+
     /// <summary>Resolved value of <paramref name="stat"/> (never negative, never NaN).</summary>
     public double Get(StatId stat) {
         Refresh();
@@ -156,6 +195,18 @@ public sealed class StatPipeline {
         }
 
         dirty = false;
+    }
+
+    private static double[] CreateStaticBases() {
+        var bases = new double[StatCount];
+        foreach (var stat in new[] {
+            StatId.DamageMult, StatId.MagicDamageMult, StatId.ArmorMult, StatId.CritDamageMult, StatId.MoveSpeedMult,
+            StatId.HealReceivedMult, StatId.XpGainMult, StatId.ManaCostMult, StatId.MimicDurationMult,
+        }) {
+            bases[(int)stat] = 1.0;
+        }
+
+        return bases;
     }
 
     private static int ToInt(double value, int minimum) {
