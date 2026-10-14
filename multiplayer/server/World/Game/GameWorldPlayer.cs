@@ -384,6 +384,7 @@ public class GameWorldPlayer : GameWorldActionableEntity {
     public int GrantXp(long amount) {
         var result = progressionService.GrantXp(CreateNocState(), amount);
         if (result.LevelsGained == 0) {
+            nocDirty |= result.State.Xp != noc.Xp;
             noc = result.State;
             return 0;
         }
@@ -394,6 +395,8 @@ public class GameWorldPlayer : GameWorldActionableEntity {
             hp = maxHp;
         }
 
+        nocDirty = true;
+        hpDirty = true;
         return result.LevelsGained;
     }
 
@@ -421,6 +424,7 @@ public class GameWorldPlayer : GameWorldActionableEntity {
             var clamped = mana > max;
             mana = max;
             manaFraction = 0;
+            nocDirty |= clamped;
             return clamped;
         }
 
@@ -436,16 +440,58 @@ public class GameWorldPlayer : GameWorldActionableEntity {
 
         manaFraction -= gained;
         mana = Math.Min(max, mana + gained);
+        nocDirty = true;
         return true;
     }
 
     /// <summary>Weapon damage after the player's <see cref="StatId.DamageMult"/> modifiers; equals <see cref="Damage"/> when there are none.</summary>
     public int ComputeAttackDamage() => stats.ComputeDamage(damage);
 
+    /// <summary>Set by progression/mana changes since the last <see cref="TryFlushNocUpdates"/>.</summary>
+    private bool nocDirty;
+    /// <summary>Set when a level-up changed HP or max HP since the last <see cref="TryFlushNocUpdates"/>.</summary>
+    private bool hpDirty;
+
+    /// <summary>Test hook: how many snapshots were built. The XP threshold is looked up only there, i.e. at flush and join, never per tick.</summary>
+    internal int NocSnapshotsBuilt { get; private set; }
+
     /// <summary>Wire snapshot of level, XP (with the threshold for the next level; 0 at max level) and mana.</summary>
     public NocSnapshot CreateNocSnapshot() {
+        NocSnapshotsBuilt++;
         progression.TryGetXpToNext(noc.Level, out var xpToNext);
         return NetworkManager.CreateNocSnapshot(noc.Level, noc.Xp, xpToNext, mana, stats.MaxMana);
+    }
+
+    /// <summary>
+    /// Sends the pending progression update. Called once per world tick: at most one <see cref="NocStateUpdated"/> per tick and player,
+    /// built from the state at that moment, so any number of XP grants or mana changes inside the tick collapse into the last state (last state wins).
+    /// The existing state messages are sent on top when needed: a level-up adds one <see cref="HpUpdated"/> because max HP changed.
+    /// The limit applies to <see cref="NocStateUpdated"/> only, not to the messages a player receives overall. Nothing pending: no allocation, no message.
+    /// While disconnected the flags are dropped: the reconnect <see cref="InitialState"/> carries the current values.
+    /// Returns true when at least one message was sent.
+    /// </summary>
+    public bool TryFlushNocUpdates() {
+        if (!nocDirty && !hpDirty) {
+            return false;
+        }
+
+        var sendNoc = nocDirty;
+        var sendHp = hpDirty;
+        nocDirty = false;
+        hpDirty = false;
+        if (Disconnected || sendMessage is null) {
+            return false;
+        }
+
+        if (sendHp) {
+            Send(NetworkManager.CreateHpUpdated(hp, maxHp));
+        }
+
+        if (sendNoc) {
+            Send(NetworkManager.CreateNocStateUpdated(CreateNocSnapshot()));
+        }
+
+        return true;
     }
 
     /// <summary>Snapshot of the persisted NOCTHEMAR block with the live mana.</summary>

@@ -1241,6 +1241,7 @@ public sealed class GameWorld : IWorkerWorld {
         var nowMs = now.ToUnixTimeMilliseconds();
         foreach (var player in playersBySessionId.Values) {
             player.TickMana(nowMs);
+            player.TryFlushNocUpdates();
         }
 
         var profileMonsterAi = settings.Debug.ProfileMonstersAILoop;

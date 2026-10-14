@@ -1,3 +1,4 @@
+using Mmorpg.Network;
 using Server;
 using Server.Nocthemar.Core;
 using Server.Nocthemar.Data;
@@ -12,11 +13,12 @@ internal static class TestSupport {
 
     public static ProgressionConfig Progression() => ProgressionConfig.Parse(ProgressionJson);
 
-    /// <summary>A player outside any world, spawned with the level-1 defaults.</summary>
-    public static GameWorldPlayer NewPlayer() {
+    /// <summary>A player outside any world, spawned with the level-1 defaults; messages sent to it are appended to <paramref name="sent"/> when given.</summary>
+    public static GameWorldPlayer NewPlayer(List<ServerMessage>? sent = null) {
+        Action<ServerMessage> send = sent is null ? Discard : sent.Add;
         var player = new GameWorldPlayer(
             Guid.NewGuid(),
-            _ => { },
+            send,
             _ => { },
             _ => { },
             () => { },
@@ -29,9 +31,12 @@ internal static class TestSupport {
         return player;
     }
 
+    private static void Discard(ServerMessage message) {
+    }
+
     /// <summary>A player restored from a save carrying the given level, XP and mana.</summary>
-    public static GameWorldPlayer NewPlayer(int level, long xp, int mana) {
-        var player = NewPlayer();
+    public static GameWorldPlayer NewPlayer(int level, long xp, int mana, List<ServerMessage>? sent = null) {
+        var player = NewPlayer(sent);
         player.ApplyPersistedState(new PlayerPersistenceState(
             "aresden", 1, 2, 300, 1000, 600, 1, 20, 500, 0, false, false, false,
             CharacterName: "T", SchemaVersion: CharacterSchema.Current, Noc: new NocState(NocState.CurrentV, level, xp, mana)));
