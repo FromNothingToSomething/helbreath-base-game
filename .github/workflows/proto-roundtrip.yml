@@ -1,11 +1,12 @@
 name: Proto round-trip (C# -> TS)
 
-# T23: C# encodes canonical messages, TS decodes them, and both are compared with the committed binary fixture.
+# T23: C# encodes the canonical message, TS and Python (3rd implementation) decode it, and all are compared with the committed binary fixture.
 # Until T23 lands, the prerequisites job only warns and the round-trip jobs are skipped; they run automatically once every file exists.
 # No server or client is started: only the serialized bytes cross the language boundary.
 on:
   push:
     paths:
+      - multiplayer/proto/network.proto
       - multiplayer/proto/nocthemar.proto
       - multiplayer/Nocthemar.Tests/ProtoFixtureTests.cs
       - multiplayer/Nocthemar.Tests/Fixtures/proto/**
@@ -43,7 +44,8 @@ jobs:
             multiplayer/Nocthemar.Tests/ProtoFixtureTests.cs \
             "$FIXTURE_DIR/$FIXTURE_BIN" \
             "$FIXTURE_DIR/$FIXTURE_EXPECTED" \
-            tools/proto-roundtrip/decode.ts; do
+            tools/proto-roundtrip/decode.ts \
+            tools/proto-roundtrip/decode.py; do
             if [ ! -f "$f" ]; then echo "::warning::missing $f (T23 not committed yet): round-trip skipped"; missing=1; fi
           done
           if [ "$missing" -eq 0 ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else echo "ready=false" >> "$GITHUB_OUTPUT"; fi
@@ -129,3 +131,46 @@ jobs:
           node --import tsx ./proto-roundtrip/decode.ts
           --bin "../${FIXTURE_DIR}/${FIXTURE_BIN}"
           --expected "../${FIXTURE_DIR}/${FIXTURE_EXPECTED}"
+
+  # Third, independent implementation: protobuf-python decodes the bytes produced by C# and the committed fixture (no .NET, no Node).
+  decode-py:
+    name: Decode in Python and compare
+    needs: [prerequisites, encode-cs]
+    if: needs.prerequisites.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # grpcio-tools brings a protoc and a matching protobuf runtime.
+      - name: Install protobuf tooling
+        run: pip install grpcio-tools
+
+      - name: Generate Python stubs
+        run: |
+          mkdir -p "${{ runner.temp }}/py-gen"
+          python -m grpc_tools.protoc -I multiplayer/proto --python_out="${{ runner.temp }}/py-gen" multiplayer/proto/network.proto multiplayer/proto/nocthemar.proto
+
+      - name: Download C# encoded bytes
+        uses: actions/download-artifact@v4
+        with:
+          name: fixture-cs
+          path: ${{ runner.temp }}/fixture-cs
+
+      - name: Decode C# bytes
+        run: >
+          python tools/proto-roundtrip/decode.py
+          --gen "${{ runner.temp }}/py-gen"
+          --bin "${{ runner.temp }}/fixture-cs/${FIXTURE_BIN}"
+          --expected "${FIXTURE_DIR}/${FIXTURE_EXPECTED}"
+
+      - name: Decode committed fixture
+        run: >
+          python tools/proto-roundtrip/decode.py
+          --gen "${{ runner.temp }}/py-gen"
+          --bin "${FIXTURE_DIR}/${FIXTURE_BIN}"
+          --expected "${FIXTURE_DIR}/${FIXTURE_EXPECTED}"
