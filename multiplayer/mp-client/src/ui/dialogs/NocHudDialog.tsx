@@ -74,7 +74,7 @@ export function NocHudDialog({ position, zIndex, onBringToFront, onDebugGrantXp 
                     border: '2px solid var(--rpg-leather)',
                 }}
             >
-                <div style={{ fontWeight: 'bold' }}>Lv {view.level}</div>
+                <div style={{ fontWeight: 'bold' }}>Lv {view.level} · {view.raceName}</div>
                 <Bar ratio={view.xpRatio} color="var(--rpg-gold-dark)" label={xpLabel} />
                 <Bar ratio={view.manaRatio} color="#2f5fbf" label={`${view.mana} / ${view.maxMana} MP`} />
                 {onDebugGrantXp && <RpgButton onClick={onDebugGrantXp}>+100 XP (debug)</RpgButton>}

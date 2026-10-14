@@ -136,3 +136,48 @@ test('PlayerEnteredRange carries race_id as field 19', () => {
     assert.equal(PlayerEnteredRange.decode(encoded).raceId, 2);
     assert.equal(PlayerEnteredRange.decode(PlayerEnteredRange.encode(PlayerEnteredRange.fromPartial({ playerId: 5n })).finish()).raceId, 0);
 });
+
+test('T35: view model carries the race id, key and name', () => {
+    const view = toNocViewModel(snapshot({ raceId: 3 }));
+    assert.equal(view.raceId, 3);
+    assert.equal(view.raceKey, 'reanime');
+    assert.equal(view.raceName, 'Réanimés');
+});
+
+test('T35: race 0 (absent on the wire) is the default race', () => {
+    const view = toNocViewModel(snapshot());
+    assert.equal(view.raceId, 0);
+    assert.equal(view.raceKey, 'valdornien');
+    assert.equal(view.raceName, 'Valdorniens');
+});
+
+test('T35: a race id this client does not know is shown by id with no key', () => {
+    const view = toNocViewModel(snapshot({ raceId: 42 }));
+    assert.equal(view.raceId, 42);
+    assert.equal(view.raceKey, null);
+    assert.equal(view.raceName, 'Race 42');
+});
+
+test('T35: every shipped race gets its own name in the view model, and the other fields are unchanged', () => {
+    const names = new Set<string>();
+    for (let raceId = 0; raceId <= 5; raceId++) {
+        const view = toNocViewModel(snapshot({ raceId }));
+        names.add(view.raceName);
+        assert.equal(view.level, 7);
+        assert.equal(view.xpRatio, 0.25);
+        assert.equal(view.manaRatio, 0.25);
+    }
+    assert.equal(names.size, 6);
+});
+
+test('T35: the race survives the wire into the view model', () => {
+    const bytes = ServerMessage.encode({
+        payload: { $case: 'nocStateUpdated', value: { state: snapshot({ raceId: 5 }) } },
+    }).finish();
+    const decoded = ServerMessage.decode(bytes);
+    assert.equal(decoded.payload?.$case, 'nocStateUpdated');
+    if (decoded.payload?.$case !== 'nocStateUpdated' || !decoded.payload.value.state) {
+        return;
+    }
+    assert.equal(toNocViewModel(decoded.payload.value.state).raceName, 'Lychens');
+});

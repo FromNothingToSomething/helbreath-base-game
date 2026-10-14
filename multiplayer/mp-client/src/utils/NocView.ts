@@ -1,4 +1,5 @@
 import type { NocSnapshot } from '../proto/generated/nocthemar';
+import { getRace, raceName } from '../constants/Races';
 
 /** UI-ready view of the server's NocSnapshot: plain numbers and clamped ratios. */
 export interface NocViewModel {
@@ -14,6 +15,11 @@ export interface NocViewModel {
     maxMana: number;
     /** 0..1; 0 when maxMana is 0. */
     manaRatio: number;
+    raceId: number;
+    /** Key from Races.json; null when this client does not know the id (newer server). */
+    raceKey: string | null;
+    /** Display name; `Race <id>` for an id this client does not know. */
+    raceName: string;
 }
 
 const clamp01 = (value: number): number => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0);
@@ -32,5 +38,8 @@ export function toNocViewModel(snapshot: NocSnapshot): NocViewModel {
         mana: snapshot.mana,
         maxMana: snapshot.maxMana,
         manaRatio: snapshot.maxMana > 0 ? clamp01(snapshot.mana / snapshot.maxMana) : 0,
+        raceId: snapshot.raceId,
+        raceKey: getRace(snapshot.raceId)?.key ?? null,
+        raceName: raceName(snapshot.raceId),
     };
 }
