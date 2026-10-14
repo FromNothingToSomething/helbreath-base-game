@@ -40,6 +40,21 @@ public sealed class Migration0To1 : ICharacterMigration {
         state with { Noc = state.Noc ?? NocState.CreateDefault(progression.MaxManaAt(1)) };
 }
 
+/// <summary>
+/// 1 -> 2: a character with a NOCTHEMAR block but no race becomes <see cref="NocState.LegacyRaceId"/>.
+/// A null block stays null (defaults, including the default race, are created at login). An existing RaceId is never touched, known or not:
+/// whether it is listed in Races.json is decided at load time (fallback), not by the schema.
+/// </summary>
+public sealed class Migration1To2 : ICharacterMigration {
+    public int From => 1;
+    public int To => 2;
+
+    public PlayerPersistenceState Apply(PlayerPersistenceState state) =>
+        state.Noc is null
+            ? state
+            : state with { Noc = state.Noc with { RaceId = state.Noc.RaceId ?? NocState.LegacyRaceId } };
+}
+
 /// <summary>Applies the ordered migrations needed to bring a loaded save to <see cref="CurrentVersion"/>.</summary>
 public sealed class CharacterMigrator {
     private readonly ICharacterMigration[] chain;
@@ -73,7 +88,7 @@ public sealed class CharacterMigrator {
 
     /// <summary>Chain for the shipped schema (<see cref="CharacterSchema.Current"/>).</summary>
     public static CharacterMigrator CreateDefault(ProgressionConfig progression) =>
-        new([new Migration0To1(progression)], CharacterSchema.Current);
+        new([new Migration0To1(progression), new Migration1To2()], CharacterSchema.Current);
 
     /// <summary>
     /// Upgrades <paramref name="state"/> to <see cref="CurrentVersion"/>.

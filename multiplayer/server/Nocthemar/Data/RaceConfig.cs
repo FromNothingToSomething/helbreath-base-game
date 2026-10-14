@@ -103,7 +103,7 @@ public sealed class RaceConfig {
 
     public IReadOnlyList<RaceDefinition> Races { get; }
 
-    /// <summary>Race given to legacy characters and used as the fallback for unknown ids.</summary>
+    /// <summary>Race of a new character without a choice, and the fallback for a race id that is not listed. Legacy characters get <see cref="NocState.LegacyRaceId"/> (which must be listed).</summary>
     public int DefaultRaceId { get; }
 
     public RaceDefinition Default => byId[DefaultRaceId];
@@ -159,6 +159,10 @@ public sealed class RaceConfig {
 
         if (file.DefaultRaceId < 0 || (errors.Count == 0 && races.All(r => r.Id != file.DefaultRaceId))) {
             errors.Add($"defaultRaceId {file.DefaultRaceId} is not the id of a listed race");
+        }
+
+        if (errors.Count == 0 && races.All(r => r.Id != NocState.LegacyRaceId)) {
+            errors.Add($"race id {NocState.LegacyRaceId} (given to legacy characters by the 1 -> 2 migration) must be listed");
         }
 
         if (errors.Count > 0) {

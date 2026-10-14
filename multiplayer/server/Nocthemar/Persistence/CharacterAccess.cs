@@ -1,4 +1,5 @@
 using Server.Nocthemar.Core;
+using Server.Nocthemar.Data;
 using Server.World.Game;
 
 namespace Server.Nocthemar.Persistence;
@@ -9,12 +10,15 @@ public static class CharacterAccess {
     /// Loads a character for login. A non-null refusal means the login must be rejected and the save left alone:
     /// a newer schema, a save that exists but cannot be read (the next save would overwrite it), or a store failure.
     /// A missing save is a new character (null state, null refusal). Cancellation propagates.
+    /// A race id that is not in <paramref name="races"/> is NOT a refusal: the state comes back with the default race and a warning is logged
+    /// (network id and original id); nothing is written here, the file keeps its content until the next regular save.
     /// </summary>
     public static async Task<(PlayerPersistenceState? State, string? Refusal)> TryLoadAsync(
         ICharacterStore store,
         string networkId,
         CancellationToken cancellationToken = default,
-        Action<string>? log = null) {
+        Action<string>? log = null,
+        RaceConfig? races = null) {
         ArgumentNullException.ThrowIfNull(store);
         log ??= Console.Error.WriteLine;
         try {
@@ -24,7 +28,7 @@ public static class CharacterAccess {
                 return (null, "Character data is unreadable. Contact an administrator.");
             }
 
-            return (state, null);
+            return (ReplaceUnknownRace(state, networkId, races, log), null);
         } catch (CharacterSchemaTooNewException ex) {
             log($"[Server] Refusing login for '{networkId}': {ex.Message}");
             return (null, "This character was saved by a newer server version.");
@@ -34,6 +38,15 @@ public static class CharacterAccess {
             log($"[Server] Refusing login for '{networkId}': character store failure: {ex}");
             return (null, "Character data is temporarily unavailable.");
         }
+    }
+
+    private static PlayerPersistenceState? ReplaceUnknownRace(PlayerPersistenceState? state, string networkId, RaceConfig? races, Action<string> log) {
+        if (races is null || state?.Noc?.RaceId is not int raceId || races.Contains(raceId)) {
+            return state;
+        }
+
+        log(CharacterLog.FormatUnknownRaceWarning(networkId, raceId, races.DefaultRaceId));
+        return state with { Noc = state.Noc with { RaceId = races.DefaultRaceId } };
     }
 
     /// <summary>

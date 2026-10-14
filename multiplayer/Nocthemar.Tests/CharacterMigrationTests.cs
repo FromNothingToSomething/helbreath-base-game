@@ -44,7 +44,7 @@ public class CharacterMigrationTests {
 
         var migrated = Default().Migrate(Sample(CharacterSchema.Legacy, noc));
 
-        Assert.Equal(noc, migrated.Noc);
+        Assert.Equal(noc with { RaceId = NocState.LegacyRaceId }, migrated.Noc); // the 1 -> 2 step only fills in the missing race
         Assert.Equal(CharacterSchema.Current, migrated.SchemaVersion);
     }
 
