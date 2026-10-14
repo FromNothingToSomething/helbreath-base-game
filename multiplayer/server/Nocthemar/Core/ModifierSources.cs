@@ -8,6 +8,7 @@ public enum ModifierSourceCategory : byte {
     Faction = 3,
     Item = 4,
     Buff = 5,
+    Skill = 6,
 }
 
 /// <summary>
@@ -26,6 +27,9 @@ public static class ModifierSources {
     public static int Item(int id) => Make(ModifierSourceCategory.Item, id);
 
     public static int Buff(int id) => Make(ModifierSourceCategory.Buff, id);
+
+    /// <summary>Owner of the modifiers of one learned class skill (<paramref name="skillId"/> = <see cref="SkillIds"/> value).</summary>
+    public static int Skill(int skillId) => Make(ModifierSourceCategory.Skill, skillId);
 
     public static int Make(ModifierSourceCategory category, int id) {
         if (id < 0 || id > MaxId) {
