@@ -44,6 +44,7 @@ public class GameWorldPlayer : GameWorldActionableEntity {
     /// <summary>Level/XP block (mana is tracked live in <see cref="mana"/> and merged back by <see cref="CreateNocState"/>).</summary>
     private NocState noc;
     private readonly StatPipeline stats;
+    private readonly ProgressionConfig progression;
     private readonly ProgressionService progressionService;
     /// <summary>Current mana; clamped to [0, <see cref="MaxMana"/>].</summary>
     private int mana;
@@ -218,6 +219,7 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         this.movementSpeedViolationCheckConfig = violationCheckConfig;
         this.antiHackTimingLagFactor = antiHackTimingLagFactor;
         inventoryManager = new InventoryManager(itemsById);
+        this.progression = progression;
         progressionService = new ProgressionService(progression);
         noc = progressionService.Normalize(null);
         stats = new StatPipeline(progression, noc.Level);
@@ -439,6 +441,12 @@ public class GameWorldPlayer : GameWorldActionableEntity {
 
     /// <summary>Weapon damage after the player's <see cref="StatId.DamageMult"/> modifiers; equals <see cref="Damage"/> when there are none.</summary>
     public int ComputeAttackDamage() => stats.ComputeDamage(damage);
+
+    /// <summary>Wire snapshot of level, XP (with the threshold for the next level; 0 at max level) and mana.</summary>
+    public NocSnapshot CreateNocSnapshot() {
+        progression.TryGetXpToNext(noc.Level, out var xpToNext);
+        return NetworkManager.CreateNocSnapshot(noc.Level, noc.Xp, xpToNext, mana, stats.MaxMana);
+    }
 
     /// <summary>Snapshot of the persisted NOCTHEMAR block with the live mana.</summary>
     public NocState CreateNocState() => noc with { Mana = mana };

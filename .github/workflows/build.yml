@@ -25,6 +25,10 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # Existing protobuf field numbers are frozen (additions are fine): compares against tools/proto-baseline/network.fields.txt.
+      - name: Proto field numbers unchanged
+        run: python3 tools/proto_fields.py check tools/proto-baseline/network.fields.txt multiplayer/proto/network.proto multiplayer/proto/nocthemar.proto
+
       # Restoring the test project also restores Server.csproj (ProjectReference).
       - name: Restore
         run: dotnet restore multiplayer/Nocthemar.Tests/Nocthemar.Tests.csproj

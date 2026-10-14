@@ -63,7 +63,8 @@ public static class Spawn {
                 (PlayerSkinColor)player.SkinColorValue,
                 player.HairStyleIndex,
                 player.UnderwearColorIndex,
-                wr.NpcsById.Values.OrderBy(n => n.Id)));
+                wr.NpcsById.Values.OrderBy(n => n.Id),
+                player.CreateNocSnapshot()));
     }
 
     /// <summary>Map snapshot on load: position, teleports, music, death flag, weather.</summary>

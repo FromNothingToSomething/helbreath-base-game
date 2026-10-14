@@ -76,7 +76,9 @@ public static class NetworkManager {
         PlayerSkinColor skinColor,
         int hairStyleIndex,
         int underwearColorIndex,
-        IEnumerable<NpcConfig> npcDirectory) {
+        IEnumerable<NpcConfig> npcDirectory,
+        NocSnapshot noc) {
+        ArgumentNullException.ThrowIfNull(noc);
         ArgumentNullException.ThrowIfNull(spells);
         ArgumentNullException.ThrowIfNull(itemsDirectory);
         ArgumentNullException.ThrowIfNull(bagItems);
@@ -106,6 +108,7 @@ public static class NetworkManager {
             SkinColor = skinColor,
             HairStyleIndex = hairStyleIndex,
             UnderwearColorIndex = underwearColorIndex,
+            Noc = noc,
         };
         foreach (var spell in spells) {
             var entry = new SpellEntry {
@@ -1087,6 +1090,25 @@ public static class NetworkManager {
 
         return new ServerMessage {
             PlayerTakeDamage = ptd,
+        };
+    }
+
+    public static NocSnapshot CreateNocSnapshot(int level, long xp, long xpToNext, int mana, int maxMana) {
+        return new NocSnapshot {
+            Level = level,
+            Xp = xp,
+            XpToNext = xpToNext,
+            Mana = mana,
+            MaxMana = maxMana,
+        };
+    }
+
+    public static ServerMessage CreateNocStateUpdated(NocSnapshot state) {
+        ArgumentNullException.ThrowIfNull(state);
+        return new ServerMessage {
+            NocStateUpdated = new NocStateUpdated {
+                State = state,
+            },
         };
     }
 

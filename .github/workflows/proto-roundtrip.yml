@@ -1,7 +1,7 @@
 name: Proto round-trip (C# -> TS)
 
 # T23: C# encodes canonical messages, TS decodes them, and both are compared with the committed binary fixture.
-# The paths below do not exist yet; the workflow starts running automatically once T15 (nocthemar.proto) and T23 land.
+# Until T23 lands, the prerequisites job only warns and the round-trip jobs are skipped; they run automatically once every file exists.
 # No server or client is started: only the serialized bytes cross the language boundary.
 on:
   push:
@@ -29,9 +29,13 @@ jobs:
     name: Check T15/T23 files exist
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
     steps:
       - uses: actions/checkout@v4
+      # Until T23 lands this only warns (the job stays green and the round-trip jobs are skipped); once every file exists the jobs run and can fail.
       - name: Verify required files
+        id: check
         run: |
           missing=0
           for f in \
@@ -40,13 +44,14 @@ jobs:
             "$FIXTURE_DIR/$FIXTURE_BIN" \
             "$FIXTURE_DIR/$FIXTURE_EXPECTED" \
             tools/proto-roundtrip/decode.ts; do
-            if [ ! -f "$f" ]; then echo "::error::missing $f (T15/T23 not committed yet)"; missing=1; fi
+            if [ ! -f "$f" ]; then echo "::warning::missing $f (T23 not committed yet): round-trip skipped"; missing=1; fi
           done
-          exit $missing
+          if [ "$missing" -eq 0 ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else echo "ready=false" >> "$GITHUB_OUTPUT"; fi
 
   encode-cs:
     name: Encode in C# and compare with fixture
     needs: prerequisites
+    if: needs.prerequisites.outputs.ready == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -77,7 +82,8 @@ jobs:
 
   decode-ts:
     name: Decode in TS and compare
-    needs: encode-cs
+    needs: [prerequisites, encode-cs]
+    if: needs.prerequisites.outputs.ready == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

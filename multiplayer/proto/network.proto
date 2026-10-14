@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package mmorpg.network;
 
+import "nocthemar.proto";
+
 enum MonsterEntityState {
   MONSTER_ENTITY_STATE_IDLE = 0;
   MONSTER_ENTITY_STATE_MOVE = 1;
@@ -442,6 +444,8 @@ message ServerMessage {
     NpcsEnteredRange npcs_entered_range = 61;
     NpcsLeftRange npcs_left_range = 62;
     LogoutCancelled logout_cancelled = 63;
+    // NOCTHEMAR messages start at 100 (see nocthemar.proto).
+    NocStateUpdated noc_state_updated = 100;
   }
 }
 
@@ -590,6 +594,8 @@ message InitialState {
   int32 hair_style_index = 25;
   int32 underwear_color_index = 26;
   repeated NpcDirectoryEntry npc_directory = 27;
+  // Local player's level/XP/mana (NOCTHEMAR).
+  NocSnapshot noc = 28;
 }
 
 message ItemAddedToBag {
