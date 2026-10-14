@@ -14,9 +14,22 @@ public class NocDispatcherTests {
         var player = TestSupport.NewPlayer();
         var dispatcher = new NocDispatcher(debugEnabled: true, _ => { });
 
-        Assert.True(dispatcher.Handle(player, Grant(250)));
+        // 50 stays below the level-1 threshold (100 XP): no level-up, so Xp is the granted amount.
+        Assert.True(dispatcher.Handle(player, Grant(50)));
 
-        Assert.Equal(250L, player.Xp);
+        Assert.Equal(1, player.Level);
+        Assert.Equal(50L, player.Xp);
+    }
+
+    [Fact]
+    public void Debug_enabled_grant_above_threshold_levels_up_and_carries_the_remainder() {
+        var player = TestSupport.NewPlayer();
+        var dispatcher = new NocDispatcher(true, _ => { });
+
+        dispatcher.Handle(player, Grant(250)); // level 1 costs 100, level 2 costs ~303: 250 -> level 2 with 150 XP carried
+
+        Assert.Equal(2, player.Level);
+        Assert.Equal(150L, player.Xp);
     }
 
     [Fact]
