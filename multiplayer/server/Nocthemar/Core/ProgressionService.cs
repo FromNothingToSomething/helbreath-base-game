@@ -20,7 +20,8 @@ public sealed class ProgressionService {
 
     /// <summary>
     /// Makes a loaded (possibly hand-edited or corrupt) state valid: level clamped to [1, max], negative XP dropped,
-    /// XP at or above the level threshold converted into levels, no XP kept at max level, mana clamped to [0, max].
+    /// XP at or above the level threshold converted into levels, no XP kept at max level, mana clamped to [0, the level's base maximum].
+    /// That maximum ignores the race and other modifiers: a caller that has them must clamp to its own maximum instead (see <c>GameWorldPlayer.ApplyPersistedState</c>).
     /// A null state yields a fresh level-1 character with full mana. Reserved ids (race, class, faction) are preserved.
     /// </summary>
     public NocState Normalize(NocState? loaded) {

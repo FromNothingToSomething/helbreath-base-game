@@ -604,7 +604,9 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         ApplyRaceCore(restoredRace);
         if (state.Noc is not null) {
             // Absent block (legacy save already migrated, or a state built without one) keeps the level-1 defaults from SetInitialState.
-            ApplyNocState(progressionService.Normalize(state.Noc));
+            // Normalize clamps mana to the level's base maximum, i.e. without the race (and any other modifier), which would cut a saved 116/116 down to 110.
+            // The race is applied above, so the saved mana goes back in and ApplyNocState clamps it to the real maximum (stats.MaxMana).
+            ApplyNocState(progressionService.Normalize(state.Noc) with { Mana = state.Noc.Mana });
             hp = maxHp;
         }
     }
