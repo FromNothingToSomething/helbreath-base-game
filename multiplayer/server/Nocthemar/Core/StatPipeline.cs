@@ -37,11 +37,13 @@ public enum StatId : byte {
     ManaCostMult = 14,
     // consumer: module 4
     MimicDurationMult = 15,
+    // consumer: module 3 (T46, probability of a critical hit; the base is StatPipeline.BaseCritChance)
+    CritChance = 16,
 }
 
 /// <summary>Number of <see cref="StatId"/> members (ids are contiguous from 0); keep equal to the last id + 1.</summary>
 public static class StatIds {
-    public const int Count = 16;
+    public const int Count = 17;
 }
 
 /// <summary>How a <see cref="StatModifier"/> combines with the base value.</summary>
@@ -66,6 +68,9 @@ public readonly record struct StatModifier(StatId Stat, ModifierKind Kind, doubl
 /// </summary>
 public sealed class StatPipeline {
     private const int StatCount = StatIds.Count;
+
+    /// <summary>Critical hit chance of a character without modifiers (5 %).</summary>
+    public const double BaseCritChance = 0.05;
 
     /// <summary>Level-independent bases: multipliers start at 1.0, everything else at 0.</summary>
     private static readonly double[] StaticBases = CreateStaticBases();
@@ -147,6 +152,12 @@ public sealed class StatPipeline {
 
     public double XpGainMult => Get(StatId.XpGainMult);
 
+    /// <summary>Probability of a critical hit, as a fraction; callers clamp it to [0, 1].</summary>
+    public double CritChance => Get(StatId.CritChance);
+
+    /// <summary>Multiplier on the critical hit bonus (1.0 = the base critical multiplier).</summary>
+    public double CritDamageMult => Get(StatId.CritDamageMult);
+
     /// <summary>Resolved value of <paramref name="stat"/> (never negative, never NaN).</summary>
     public double Get(StatId stat) {
         Refresh();
@@ -205,6 +216,8 @@ public sealed class StatPipeline {
         }) {
             bases[(int)stat] = 1.0;
         }
+
+        bases[(int)StatId.CritChance] = BaseCritChance;
 
         return bases;
     }

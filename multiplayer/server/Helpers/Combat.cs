@@ -697,7 +697,7 @@ public static class Combat {
     }
 
     private static void ApplyPlayerAttackToMonster(GameWorldRef wr, GameWorldPlayer attacker, GameWorldMonster targetMonster, AttackType attackType) {
-        var damage = attacker.ComputeAttackDamage();
+        var damage = attacker.RollAttackDamage().Damage;
         if (!TryResolveMonsterAttack(
                 wr,
                 targetMonster,
@@ -772,7 +772,7 @@ public static class Combat {
         MonsterVisibility.BroadcastPlayerTakeDamage(
             wr,
             targetPlayer.PlayerId,
-            attacker.ComputeAttackDamage(),
+            attacker.RollAttackDamage().Damage,
             attacker.PlayerId,
             attackTypeOut,
             stunPacketMs,

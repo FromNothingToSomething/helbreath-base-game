@@ -625,6 +625,26 @@ public class GameWorldPlayer : GameWorldActionableEntity {
     /// <summary>Weapon damage after the player's <see cref="StatId.DamageMult"/> modifiers; equals <see cref="Damage"/> when there are none.</summary>
     public int ComputeAttackDamage() => stats.ComputeDamage(damage);
 
+    /// <summary>Damage of a critical hit relative to a normal one, before <see cref="StatId.CritDamageMult"/>.</summary>
+    public const double CritBaseMultiplier = 1.5;
+
+    /// <summary>
+    /// Damage of one attack with the critical hit roll. <paramref name="roll"/> is a uniform value in [0, 1): the hit is critical when it is below <see cref="StatId.CritChance"/> (clamped to [0, 1]).
+    /// A critical hit deals <see cref="ComputeAttackDamage"/> x <see cref="CritBaseMultiplier"/> x <see cref="StatId.CritDamageMult"/>, never less than a normal hit. A zero damage stays zero.
+    /// </summary>
+    public AttackRoll RollAttackDamage(double roll) {
+        var normal = stats.ComputeDamage(damage);
+        if (normal <= 0 || !(roll < Math.Clamp(stats.CritChance, 0.0, 1.0))) {
+            return new AttackRoll(normal, false);
+        }
+
+        var critical = (int)Math.Min(int.MaxValue, Math.Round(normal * CritBaseMultiplier * stats.CritDamageMult, MidpointRounding.AwayFromZero));
+        return new AttackRoll(Math.Max(normal, critical), true);
+    }
+
+    /// <summary>Same as <see cref="RollAttackDamage(double)"/> with a fresh random roll; used by the combat code.</summary>
+    public AttackRoll RollAttackDamage() => RollAttackDamage(Random.Shared.NextDouble());
+
     /// <summary>Set by progression/mana changes since the last <see cref="TryFlushNocUpdates"/>.</summary>
     private bool nocDirty;
     /// <summary>Set when a level-up changed HP or max HP since the last <see cref="TryFlushNocUpdates"/>.</summary>
