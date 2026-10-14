@@ -1,0 +1,15 @@
+{
+  "GameWorldId": "elvine",
+  "X": 10,
+  "Y": 11,
+  "MovementSpeedMs": 300,
+  "CastSpeedMs": 1000,
+  "AttackSpeedMs": 600,
+  "AttackRange": 1,
+  "Damage": 20,
+  "StunDuration": 500,
+  "AttackType": 2,
+  "AttackMode": true,
+  "RunMode": false,
+  "AllowDashAttack": true
+}

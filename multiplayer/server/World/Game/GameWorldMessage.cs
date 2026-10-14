@@ -1,4 +1,5 @@
 using Server;
+using Server.Nocthemar.Core;
 using Mmorpg.Network;
 
 namespace Server.World.Game;
@@ -55,7 +56,11 @@ public sealed record PlayerPersistenceState(
     int? FacingDirection = null,
     PersistedInventoryItem[]? BagItems = null,
     PersistedEquippedInventoryItem[]? EquippedItems = null,
-    string CharacterName = "");
+    string CharacterName = "",
+    /// <summary>Save format version; absent in pre-versioning files, which deserialize to <see cref="CharacterSchema.Legacy"/>. Stamped by <see cref="ICharacterStore"/> on save.</summary>
+    int SchemaVersion = CharacterSchema.Legacy,
+    /// <summary>NOCTHEMAR block; null for legacy saves and means "create defaults at login".</summary>
+    NocState? Noc = null);
 
 /// <summary>State carried across worlds during a transfer: session identity plus the player settings snapshot to reapply in the target world.</summary>
 public sealed record TransferredPlayerState(Guid SessionId, PlayerPersistenceState State);

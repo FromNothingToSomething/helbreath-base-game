@@ -1,0 +1,27 @@
+{
+  "GameWorldId": "aresden",
+  "X": 120,
+  "Y": 85,
+  "MovementSpeedMs": 300,
+  "CastSpeedMs": 1000,
+  "AttackSpeedMs": 600,
+  "AttackRange": 1,
+  "Damage": 20,
+  "StunDuration": 500,
+  "AttackType": 0,
+  "AttackMode": false,
+  "RunMode": true,
+  "AllowDashAttack": false,
+  "GenderValue": 1,
+  "SkinColorValue": 2,
+  "HairStyleIndex": 3,
+  "UnderwearColorIndex": 4,
+  "FacingDirection": 5,
+  "BagItems": [
+    { "ItemId": 1, "ItemUid": 1001, "BagX": 0, "BagY": 0, "Quantity": 3, "BagZIndex": 0, "EffectOverrides": null }
+  ],
+  "EquippedItems": [
+    { "Slot": "weapon", "Item": { "ItemId": 2, "ItemUid": 1002, "BagX": null, "BagY": null, "EffectOverrides": null } }
+  ],
+  "CharacterName": "Tester"
+}
