@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Mmorpg.Network;
+using Server.Nocthemar.Data;
 using Server.Nocthemar.Persistence;
 using Server.Utils;
 
@@ -879,4 +880,6 @@ public record SettingsConfig(
     /// <summary>After this many consecutive outbound encode/send failures (excluding cancellation), cancel the connection receive loop. Zero disables the circuit breaker. JSON <c>maxConsecutiveOutboundSendFailures</c>.</summary>
     int MaxConsecutiveOutboundSendFailures = 10,
     /// <summary>Character persistence provider; JSON <c>persistence</c> in <c>Settings.json</c>. Null selects the JSON file store.</summary>
-    PersistenceConfig? Persistence = null);
+    PersistenceConfig? Persistence = null,
+    /// <summary>NOCTHEMAR switches (debug requests); JSON <c>nocthemar</c> in <c>Settings.json</c>. Null means everything off.</summary>
+    NocthemarSettings? Nocthemar = null);

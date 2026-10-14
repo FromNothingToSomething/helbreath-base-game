@@ -13,6 +13,9 @@
   "persistence": {
     "provider": "json"
   },
+  "nocthemar": {
+    "debug": false
+  },
   "threads": {
     "gameWorldWorkers": 1,
     "globalWorldWorkerThread": 0

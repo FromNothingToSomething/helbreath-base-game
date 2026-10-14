@@ -17,6 +17,11 @@ message NocSnapshot {
   int32 max_mana = 5;
 }
 
+// Debug only: the server ignores it unless Settings.json nocthemar.debug is true.
+message NocGrantXpRequest {
+  int64 amount = 1;
+}
+
 // Self only. At most one per world tick and player (other state messages such as HpUpdated may accompany it); the state is the latest one at the end of that tick (last state wins).
 message NocStateUpdated {
   NocSnapshot state = 1;

@@ -49,6 +49,7 @@ import { appStore, setCursorSpriteKey } from './ui/store/App.store';
 import { CURSOR_GRAB_1, CURSOR_GRAB_2 } from './constants/SpriteKeys';
 import { deathDialogStore } from './ui/store/DeathDialog.store';
 import { nocStore } from './ui/store/Noc.store';
+import { getNetworkManager } from './utils/RegistryUtils';
 import { connectingDialogStore } from './ui/store/ConnectingDialog.store';
 import { connectDialogStore } from './ui/store/ConnectDialog.store';
 import { serverMessageDialogStore, setServerMessageDialogOpen } from './ui/store/ServerMessageDialog.store';
@@ -130,6 +131,13 @@ function App()
     const nocHudPosition = {
         x: 20,
         y: typeof window === 'undefined' ? 0 : Math.max(0, window.innerHeight - 100),
+    };
+    const handleDebugGrantXp = () => {
+        const game = phaserRef.current?.game;
+        if (!game) {
+            return;
+        }
+        getNetworkManager(game)?.sendNocGrantXpRequest(100n);
     };
     // Z-index state for bringing dialogs to front
     const [dialogZIndex, setDialogZIndex] = useState(10000);
@@ -926,6 +934,7 @@ function App()
                     <NocHudDialog
                         position={nocHudPosition}
                         zIndex={NOC_HUD_Z_INDEX}
+                        onDebugGrantXp={import.meta.env.DEV ? handleDebugGrantXp : undefined}
                     />
                 )}
 

@@ -95,6 +95,8 @@ message ClientMessage {
     WeatherChangeRequest weather_change_request = 39;
     SummonNpcRequest summon_npc_request = 40;
     KillAllNpcsRequest kill_all_npcs_request = 41;
+    // NOCTHEMAR requests start at 100 (see nocthemar.proto).
+    NocGrantXpRequest noc_grant_xp_request = 100;
   }
 }
 

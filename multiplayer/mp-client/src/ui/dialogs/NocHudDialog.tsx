@@ -1,12 +1,15 @@
 import { useStore } from '@tanstack/react-store';
 import type { CSSProperties } from 'react';
 import { HeadlessDraggableDialog } from './HeadlessDraggableDialog';
+import { RpgButton } from '../components/RpgButton';
 import { nocStore } from '../store/Noc.store';
 
 interface NocHudDialogProps {
     position: { x: number; y: number };
     zIndex?: number;
     onBringToFront?: () => void;
+    /** Development builds only: asks the server for XP (honoured when Settings.json nocthemar.debug is true). */
+    onDebugGrantXp?: () => void;
 }
 
 const BAR_WIDTH = 220;
@@ -41,7 +44,7 @@ function Bar({ ratio, color, label }: { ratio: number; color: string; label: str
 }
 
 /** Minimal level / XP / mana HUD fed by Noc.store (server-authoritative). Fixed position, not draggable. */
-export function NocHudDialog({ position, zIndex, onBringToFront }: NocHudDialogProps) {
+export function NocHudDialog({ position, zIndex, onBringToFront, onDebugGrantXp }: NocHudDialogProps) {
     const view = useStore(nocStore, (state) => state.view);
     if (!view) {
         return null;
@@ -74,6 +77,7 @@ export function NocHudDialog({ position, zIndex, onBringToFront }: NocHudDialogP
                 <div style={{ fontWeight: 'bold' }}>Lv {view.level}</div>
                 <Bar ratio={view.xpRatio} color="var(--rpg-gold-dark)" label={xpLabel} />
                 <Bar ratio={view.manaRatio} color="#2f5fbf" label={`${view.mana} / ${view.maxMana} MP`} />
+                {onDebugGrantXp && <RpgButton onClick={onDebugGrantXp}>+100 XP (debug)</RpgButton>}
             </div>
         </HeadlessDraggableDialog>
     );

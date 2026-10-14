@@ -5,6 +5,7 @@ using Mmorpg.Network;
 using Server;
 using Server.Helpers;
 using Server.Nocthemar.Data;
+using Server.Nocthemar.Net;
 using Server.Utils;
 
 namespace Server.World.Game;
@@ -170,6 +171,7 @@ public sealed class GameWorld : IWorkerWorld {
     private readonly IReadOnlyDictionary<int, ItemConfig> itemsById;
     private readonly IReadOnlyDictionary<int, NpcConfig> npcsById;
     private readonly ProgressionConfig progression;
+    private readonly NocDispatcher nocDispatcher;
     private readonly Dictionary<long, GameWorldMonster> monstersByMonsterId = new();
     private readonly Dictionary<long, GameWorldNPC> npcsByNpcId = new();
     /// <summary>Diagnostics: sum of per-loop <see cref="TimeSpan.TotalMilliseconds"/> since last 1s log; only on worker thread.</summary>
@@ -213,6 +215,7 @@ public sealed class GameWorld : IWorkerWorld {
         ArgumentNullException.ThrowIfNull(itemsById);
         ArgumentNullException.ThrowIfNull(npcsById);
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
+        nocDispatcher = new NocDispatcher(settings.Nocthemar?.Debug ?? false);
         this.monsterCatalog = monsterCatalog;
         this.monstersById = monstersById;
         this.spellsById = spellsById;
@@ -748,6 +751,9 @@ public sealed class GameWorld : IWorkerWorld {
                 break;
             case ClientMessage.PayloadOneofCase.AuthenticateRequest:
                 playerConnection.RequestDisconnect("Authenticate messages are only allowed before joining the game world.");
+                break;
+            case ClientMessage.PayloadOneofCase.NocGrantXpRequest:
+                nocDispatcher.Handle(playerConnection, message.Message);
                 break;
             case ClientMessage.PayloadOneofCase.None:
                 break;

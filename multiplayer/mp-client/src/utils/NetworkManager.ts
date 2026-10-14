@@ -895,6 +895,20 @@ export class NetworkManager {
         this.sendPacket(command);
     }
 
+    /** Debug only: the server ignores it unless Settings.json nocthemar.debug is true. */
+    public sendNocGrantXpRequest(amount: bigint): void {
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        const command = ClientMessage.encode({
+            payload: {
+                $case: 'nocGrantXpRequest',
+                value: { amount },
+            },
+        }).finish();
+        this.sendPacket(command);
+    }
+
     public sendKillAllNpcsRequest(): void {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             return;
