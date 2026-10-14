@@ -7,10 +7,16 @@ namespace Server.Nocthemar.Core;
 /// Implementations: <c>JsonCharacterStore</c> (dev, <c>Chars/*.json</c>) and <c>PgCharacterStore</c> (production).
 /// </summary>
 public interface ICharacterStore {
-    /// <summary>Loads and migrates the character to <see cref="CharacterSchema.Current"/>; null when absent or unreadable.</summary>
+    /// <summary>
+    /// Loads and migrates the character to <see cref="CharacterSchema.Current"/>; null when absent, unreadable, or the id is invalid.
+    /// Throws <c>CharacterSchemaTooNewException</c> for a save written by a newer server: callers must refuse the login rather than treat it as absent, otherwise the next save would overwrite it.
+    /// </summary>
     Task<PlayerPersistenceState?> LoadAsync(string networkId, CancellationToken ct = default);
 
-    /// <summary>Persists the character stamped with <see cref="CharacterSchema.Current"/>; must be atomic (a failed write leaves the previous save intact).</summary>
+    /// <summary>
+    /// Persists the character stamped with <see cref="CharacterSchema.Current"/>; must be atomic (a failed write leaves the previous save intact).
+    /// Throws <see cref="ArgumentException"/> for an invalid id and propagates I/O failures so the caller decides how to react.
+    /// </summary>
     Task SaveAsync(string networkId, PlayerPersistenceState state, CancellationToken ct = default);
 
     /// <summary>True when a save exists for <paramref name="networkId"/>; false for invalid ids.</summary>
