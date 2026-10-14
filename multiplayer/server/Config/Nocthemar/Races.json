@@ -1,0 +1,383 @@
+{
+  "schemaVersion": 1,
+  "defaultRaceId": 0,
+  "races": [
+    {
+      "id": 0,
+      "key": "valdornien",
+      "name": "Valdorniens",
+      "modifiers": [
+        {
+          "stat": "MaxHp",
+          "kind": "PercentMult",
+          "value": 0.05
+        },
+        {
+          "stat": "MaxMana",
+          "kind": "PercentMult",
+          "value": 0.05
+        },
+        {
+          "stat": "ManaRegen",
+          "kind": "PercentMult",
+          "value": 0.05
+        },
+        {
+          "stat": "DamageMult",
+          "kind": "PercentMult",
+          "value": 0.05
+        },
+        {
+          "stat": "XpGainMult",
+          "kind": "PercentAdd",
+          "value": 0.1
+        }
+      ],
+      "traits": [
+        "no_class_penalty"
+      ],
+      "appearance": {
+        "genders": [
+          0,
+          1
+        ],
+        "skinColors": [
+          0,
+          1,
+          2
+        ],
+        "hairStyles": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "underwearColors": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "art": {
+        "native": true
+      }
+    },
+    {
+      "id": 1,
+      "key": "spectral",
+      "name": "Spectraux",
+      "modifiers": [
+        {
+          "stat": "MagicDamageMult",
+          "kind": "PercentAdd",
+          "value": 0.1
+        },
+        {
+          "stat": "ResistCurse",
+          "kind": "Flat",
+          "value": 0.15
+        },
+        {
+          "stat": "MaxHp",
+          "kind": "PercentMult",
+          "value": -0.1
+        }
+      ],
+      "traits": [
+        "see_invisible"
+      ],
+      "appearance": {
+        "genders": [
+          0,
+          1
+        ],
+        "skinColors": [
+          0,
+          1,
+          2
+        ],
+        "hairStyles": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "underwearColors": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "art": {
+        "native": false,
+        "tint": "#9FB4C8",
+        "todo": "TODO(art): dedicated sprites; human sprites + tint until delivered."
+      }
+    },
+    {
+      "id": 2,
+      "key": "sang_mele",
+      "name": "Sang-mêlés",
+      "modifiers": [
+        {
+          "stat": "DamageMult",
+          "kind": "PercentAdd",
+          "value": 0.1
+        },
+        {
+          "stat": "ResistPhysical",
+          "kind": "Flat",
+          "value": 0.1
+        },
+        {
+          "stat": "MimicDurationMult",
+          "kind": "PercentAdd",
+          "value": 0.2
+        }
+      ],
+      "traits": [
+        "npc_relation_human_malus"
+      ],
+      "appearance": {
+        "genders": [
+          0,
+          1
+        ],
+        "skinColors": [
+          0,
+          1,
+          2
+        ],
+        "hairStyles": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "underwearColors": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "art": {
+        "native": false,
+        "tint": "#8B4A3C",
+        "todo": "TODO(art): dedicated sprites; human sprites + tint until delivered."
+      }
+    },
+    {
+      "id": 3,
+      "key": "reanime",
+      "name": "Réanimés",
+      "modifiers": [
+        {
+          "stat": "ResistDeath",
+          "kind": "Flat",
+          "value": 0.2
+        },
+        {
+          "stat": "MoveSpeedMult",
+          "kind": "PercentMult",
+          "value": -0.1
+        },
+        {
+          "stat": "HealReceivedMult",
+          "kind": "PercentAdd",
+          "value": -0.2
+        }
+      ],
+      "traits": [
+        "immune_disease",
+        "immune_poison",
+        "healed_by_death_damage"
+      ],
+      "appearance": {
+        "genders": [
+          0,
+          1
+        ],
+        "skinColors": [
+          0,
+          1,
+          2
+        ],
+        "hairStyles": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "underwearColors": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "art": {
+        "native": false,
+        "tint": "#7A8F6A",
+        "todo": "TODO(art): dedicated sprites; human sprites + tint until delivered."
+      }
+    },
+    {
+      "id": 4,
+      "key": "chimere",
+      "name": "Chimères",
+      "modifiers": [
+        {
+          "stat": "ArmorMult",
+          "kind": "PercentAdd",
+          "value": 0.15
+        },
+        {
+          "stat": "ResistMagic",
+          "kind": "Flat",
+          "value": 0.1
+        },
+        {
+          "stat": "HealReceivedMult",
+          "kind": "PercentAdd",
+          "value": -0.15
+        }
+      ],
+      "traits": [
+        "extra_essence_slots_2",
+        "no_normal_resurrection"
+      ],
+      "appearance": {
+        "genders": [
+          0,
+          1
+        ],
+        "skinColors": [
+          0,
+          1,
+          2
+        ],
+        "hairStyles": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "underwearColors": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "art": {
+        "native": false,
+        "tint": "#4A4F57",
+        "todo": "TODO(art): dedicated sprites; human sprites + tint until delivered."
+      }
+    },
+    {
+      "id": 5,
+      "key": "lychen",
+      "name": "Lychens",
+      "modifiers": [
+        {
+          "stat": "MoveSpeedMult",
+          "kind": "PercentAdd",
+          "value": 0.15
+        },
+        {
+          "stat": "CritDamageMult",
+          "kind": "PercentAdd",
+          "value": 0.1
+        },
+        {
+          "stat": "ManaCostMult",
+          "kind": "PercentAdd",
+          "value": 0.1
+        }
+      ],
+      "traits": [
+        "free_transform_out_of_combat"
+      ],
+      "appearance": {
+        "genders": [
+          0,
+          1
+        ],
+        "skinColors": [
+          0,
+          1,
+          2
+        ],
+        "hairStyles": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "underwearColors": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "art": {
+        "native": false,
+        "tint": "#6B5A3E",
+        "todo": "TODO(art): dedicated sprites; human sprites + tint until delivered."
+      }
+    }
+  ]
+}
