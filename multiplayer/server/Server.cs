@@ -41,8 +41,8 @@ var races = await RaceConfig.LoadAsync();
 var classes = await ClassConfig.LoadAsync();
 var classSkills = await SkillConfig.LoadAsync(classes);
 classes.ValidateRaces(races);
-// No skill handler exists yet in this module step: every shipped skill is a catalog entry or a pure stat passive. Handlers are registered here as they are written.
-var nocContent = new NocContent(classes, classSkills, progression, new SkillHandlerRegistry());
+// Skill handlers are registered here; NocContent fails fast when a ready skill names a handler that is not.
+var nocContent = new NocContent(classes, classSkills, progression, BuiltinSkillHandlers.Register(new SkillHandlerRegistry()));
 var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");
 // Fails fast on an unusable persistence.provider, before any world worker starts.
 var characterStore = CharacterStoreFactory.Create(settings.Persistence, charsDirectory, progression);

@@ -16,7 +16,7 @@ namespace Server.World.Game;
 /// combat interrupt stunlock timing for movement validation, and one authoritative per-player inventory.
 /// Connection callbacks may be cleared while the entity remains for reconnect grace.
 /// </summary>
-public class GameWorldPlayer : GameWorldActionableEntity {
+public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
     private Action<ServerMessage>? sendMessage;
     private Action<string?>? requestDisconnect;
     private readonly Action<WorldTransferDestination> requestWorldChange;
@@ -479,6 +479,45 @@ public class GameWorldPlayer : GameWorldActionableEntity {
     internal SkillHookTable? SkillHookSet => skillEffects?.Hooks;
 
     private readonly Dictionary<int, long> skillReadyAtMs = [];
+    private readonly List<(int SkillId, long UntilMs)> buffs = [];
+
+    /// <inheritdoc />
+    public void ApplyBuff(int skillId, IReadOnlyList<StatModifier> modifiers, long untilMs) {
+        var source = ModifierSources.Buff(skillId);
+        stats.RemoveSource(source);
+        buffs.RemoveAll(b => b.SkillId == skillId);
+        foreach (var m in modifiers) {
+            stats.Add(m with { SourceId = source });
+        }
+
+        buffs.Add((skillId, untilMs));
+        RefreshDerivedStats();
+    }
+
+    /// <summary>Number of timed buffs currently active.</summary>
+    public int ActiveBuffCount => buffs.Count;
+
+    /// <summary>Removes the buffs whose time is up. Cheap when none is active (the common case); world thread only. Returns true when something expired.</summary>
+    public bool TickBuffs(long nowMs) {
+        if (buffs.Count == 0) {
+            return false;
+        }
+
+        var expired = false;
+        for (var i = buffs.Count - 1; i >= 0; i--) {
+            if (nowMs >= buffs[i].UntilMs) {
+                stats.RemoveSource(ModifierSources.Buff(buffs[i].SkillId));
+                buffs.RemoveAt(i);
+                expired = true;
+            }
+        }
+
+        if (expired) {
+            RefreshDerivedStats();
+        }
+
+        return expired;
+    }
 
     /// <summary>The learned skill with this id, or null.</summary>
     internal SkillDefinition? FindLearnedSkill(int skillId) {
@@ -532,7 +571,7 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         }
 
         var skill = FindLearnedSkill(skillId)!;
-        var result = skillEffects!.Hooks.RunSkill(skillId, SkillHook.OnCast, PlayerId, targetId, nowMs);
+        var result = skillEffects!.Hooks.RunSkill(skillId, SkillHook.OnCast, PlayerId, targetId, nowMs, this);
         if (!result.Success) {
             return result.Refusal ?? "The skill failed.";
         }

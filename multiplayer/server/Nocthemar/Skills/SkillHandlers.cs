@@ -48,7 +48,17 @@ public static class SkillHooks {
 /// <param name="TargetId">Network id of the target, when the hook has one.</param>
 /// <param name="Amount">Damage dealt / taken for the damage hooks, otherwise 0.</param>
 /// <param name="NowMs">World clock in milliseconds.</param>
-public readonly record struct SkillContext(SkillDefinition Skill, SkillHook Hook, int CasterId, int? TargetId, int Amount, long NowMs);
+/// <param name="Actor">The player running the skill, when the invocation comes from the world; null in unit tests that do not need one.</param>
+public readonly record struct SkillContext(SkillDefinition Skill, SkillHook Hook, int CasterId, int? TargetId, int Amount, long NowMs, ISkillActor? Actor = null);
+
+/// <summary>What a handler may do to the player that owns the skill; implemented by the world player so handlers stay free of world types.</summary>
+public interface ISkillActor {
+    /// <summary>Heals (scaled by the player's heal-received stat); returns the HP actually regained.</summary>
+    int Heal(int amount);
+
+    /// <summary>Applies timed stat modifiers owned by the skill until <paramref name="untilMs"/>; casting again refreshes them instead of stacking.</summary>
+    void ApplyBuff(int skillId, IReadOnlyList<Server.Nocthemar.Core.StatModifier> modifiers, long untilMs);
+}
 
 /// <summary>Outcome of a handler. <c>Refusal</c> is a short player-facing reason when <c>Success</c> is false (nothing is spent).</summary>
 public readonly record struct SkillResult(bool Success, string? Refusal = null) {
@@ -232,10 +242,10 @@ public sealed class SkillHookTable {
     }
 
     /// <summary>Runs only the subscription of one skill (used by the cast path: the cast request names the skill).</summary>
-    public SkillResult RunSkill(int skillId, SkillHook hook, int casterId, int? targetId, long nowMs) {
+    public SkillResult RunSkill(int skillId, SkillHook hook, int casterId, int? targetId, long nowMs, ISkillActor? actor = null) {
         foreach (var entry in byHook[SkillHooks.IndexOf(hook)]) {
             if (entry.Skill.Id == skillId) {
-                var context = new SkillContext(entry.Skill, hook, casterId, targetId, 0, nowMs);
+                var context = new SkillContext(entry.Skill, hook, casterId, targetId, 0, nowMs, actor);
                 return entry.Handler.Execute(in context);
             }
         }

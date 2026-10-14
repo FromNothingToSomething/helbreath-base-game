@@ -89,8 +89,8 @@ public class SkillConfigTests {
         Assert.Contains(posture.Modifiers, m => m is { Stat: StatId.MoveSpeedMult, Value: -0.10 });
 
         var ready = cfg.Skills.Where(s => s.IsReady).ToArray();
-        Assert.All(ready, s => Assert.Equal(SkillKind.Passive, s.Kind));
-        Assert.All(ready, s => Assert.NotEmpty(s.Modifiers));
+        Assert.All(ready.Where(s => s.Kind == SkillKind.Passive), s => Assert.NotEmpty(s.Modifiers));
+        Assert.All(ready.Where(s => s.Kind != SkillKind.Passive), s => Assert.NotNull(s.Handler));
         Assert.All(cfg.Skills.Where(s => !s.IsReady), s => Assert.Empty(s.Modifiers));
     }
 

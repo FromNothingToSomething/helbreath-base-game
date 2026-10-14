@@ -35,11 +35,12 @@ public class NocCatalogTests {
 
         Assert.Equal(1020, skills[1022].PrerequisiteId); // the catalog-only slot 1 is skipped
         Assert.Equal(1214, skills[1216].PrerequisiteId);
-        Assert.False(skills[1001].Ready);
-        Assert.Equal(1, skills[1001].Kind);
+        Assert.False(skills[1003].Ready);
+        Assert.Equal(1, skills[1003].Kind);
         Assert.Equal(2, skills[1007].Kind);
         Assert.Equal(2, skills[1007].Cost);
         Assert.Equal(30, skills[1007].Level);
+        Assert.Equal(1001, skills[1003].PrerequisiteId); // 1001 is a ready active
         Assert.Equal(1000, skills[1001].PrerequisiteId);
         Assert.Equal(0, skills[1000].PrerequisiteId);
         Assert.All(skills.Values, s => Assert.False(string.IsNullOrEmpty(s.Desc)));

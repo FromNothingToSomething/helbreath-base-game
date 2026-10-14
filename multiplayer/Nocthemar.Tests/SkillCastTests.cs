@@ -34,7 +34,7 @@ public class SkillCastTests {
 
         var handler = new Caster("test_cast", ok);
         var skills = SkillConfig.Parse(doc.ToJsonString(), TestSupport.ShippedClasses());
-        var content = new NocContent(TestSupport.ShippedClasses(), skills, TestSupport.Progression(), new SkillHandlerRegistry().Register(handler));
+        var content = new NocContent(TestSupport.ShippedClasses(), skills, TestSupport.Progression(), BuiltinSkillHandlers.Register(new SkillHandlerRegistry()).Register(handler));
         var p = TestSupport.NewPlayer(null, null, content);
         TestSupport.Restore(p, new NocState(NocState.CurrentV, 10, 0, mana, RaceId: 0, ClassId: 0, Skills: learned.Length == 0 ? null : learned));
         return (p, handler);

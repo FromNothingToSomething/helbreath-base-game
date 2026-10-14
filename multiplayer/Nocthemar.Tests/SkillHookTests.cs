@@ -82,14 +82,15 @@ public class SkillHookTests {
     }
 
     [Fact]
-    public void Validation_passes_for_the_shipped_catalog_without_any_handler() {
-        new SkillHandlerRegistry().ValidateCatalog(Skills);
+    public void Validation_passes_for_the_shipped_catalog_with_the_builtin_handlers_only() {
+        BuiltinSkillHandlers.Register(new SkillHandlerRegistry()).ValidateCatalog(Skills);
+        Assert.Throws<InvalidOperationException>(() => new SkillHandlerRegistry().ValidateCatalog(Skills));
     }
 
     [Fact]
     public void Validation_lists_ready_skills_with_an_unregistered_handler() {
         var catalog = WithHandlers((1001, "bone_wall"), (1003, "taunt"));
-        var registry = new SkillHandlerRegistry().Register(new Recorder("bone_wall", SkillHook.OnCast));
+        var registry = BuiltinSkillHandlers.Register(new SkillHandlerRegistry()).Register(new Recorder("bone_wall", SkillHook.OnCast));
 
         var ex = Assert.Throws<InvalidOperationException>(() => registry.ValidateCatalog(catalog));
 

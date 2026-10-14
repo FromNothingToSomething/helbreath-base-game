@@ -37,7 +37,10 @@
       "kind": "active",
       "cost": 1,
       "desc": "Mur d'ossements absorbe 30% des dégâts pendant 8s",
-      "status": "planned"
+      "status": "ready",
+      "handler": "buff_bone_shield",
+      "cooldownMs": 20000,
+      "manaCost": 25
     },
     {
       "id": 1002,
@@ -1028,8 +1031,11 @@
       "level": 3,
       "kind": "active",
       "cost": 1,
-      "desc": "Soigne en absorbant la vie ennemie",
-      "status": "planned"
+      "desc": "Soigne 250 PV",
+      "status": "ready",
+      "handler": "heal_black_blessing",
+      "cooldownMs": 12000,
+      "manaCost": 30
     },
     {
       "id": 1302,

@@ -1267,6 +1267,7 @@ public sealed class GameWorld : IWorkerWorld {
         foreach (var player in playersBySessionId.Values) {
             player.TickMana(nowMs);
             player.TickHp(nowMs);
+            player.TickBuffs(nowMs);
             player.TryFlushNocUpdates();
         }
 

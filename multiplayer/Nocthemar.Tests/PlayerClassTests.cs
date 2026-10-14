@@ -77,7 +77,7 @@ public class PlayerClassTests {
 
         Assert.Contains("Choose a class", p.TryLearnSkill(1000));
         p.TryChooseClass(0);
-        Assert.Contains("not available yet", p.TryLearnSkill(1001));
+        Assert.Contains("not available yet", p.TryLearnSkill(1003));
         Assert.Contains("Unknown skill", p.TryLearnSkill(7));
     }
 
@@ -170,7 +170,7 @@ public class PlayerClassTests {
         Assert.Null(p.ClassId);
         Assert.Empty(p.LearnedSkillIds);
 
-        TestSupport.Restore(p, Saved(3, 0, 1000, 1010, 1020, 1001, 5)); // 2 points, third branch, planned, unknown
+        TestSupport.Restore(p, Saved(3, 0, 1000, 1010, 1020, 1003, 5)); // 2 points, third branch, planned, unknown
         Assert.Equal(0, p.ClassId);
         Assert.True(new[] { 1000, 1010 }.SequenceEqual(p.LearnedSkillIds));
         Assert.Equal(0, p.SkillPoints);
@@ -240,7 +240,7 @@ public class PlayerClassTests {
         var node = doc["skills"]!.AsArray().Single(n => n!["id"]!.GetValue<int>() == 1000)!;
         node["handler"] = "test_buff";
         var skills = SkillConfig.Parse(doc.ToJsonString(), TestSupport.ShippedClasses());
-        var content = new NocContent(TestSupport.ShippedClasses(), skills, TestSupport.Progression(), new SkillHandlerRegistry().Register(handler));
+        var content = new NocContent(TestSupport.ShippedClasses(), skills, TestSupport.Progression(), BuiltinSkillHandlers.Register(new SkillHandlerRegistry()).Register(handler));
         var p = Player(content);
 
         TestSupport.Restore(p, Saved(5, 0, 1000));
