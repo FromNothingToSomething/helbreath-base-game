@@ -78,3 +78,30 @@ jobs:
       # `prebuild` runs proto:generate first.
       - name: Build
         run: pnpm build
+
+  # Pure client logic (snapshot -> view model) and the wire format as decoded by the generated TS code; no browser, no server.
+  client-logic:
+    name: Client logic tests (tsx)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: tools
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate TS stubs
+        run: pnpm run proto:generate
+
+      - name: Test
+        run: node --import tsx --test noc-client-tests/*.test.ts

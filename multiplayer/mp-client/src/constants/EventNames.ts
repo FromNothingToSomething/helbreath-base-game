@@ -115,6 +115,10 @@ export const MONSTER_ATTACKED_RECEIVED = 'monster-attacked-received';
 export const MONSTER_ATTACKED_MONSTER_RECEIVED = 'monster-attacked-monster-received';
 /** Server monster damage on a player (viewers + victim). Payload: PlayerReceiveDamageEventData */
 export const PLAYER_RECEIVE_DAMAGE_RECEIVED = 'player-receive-damage-received';
+/** Self player only: authoritative level/XP/mana (InitialState.noc and NocStateUpdated). Payload: NocViewModel */
+export const NOC_STATE_RECEIVED = 'noc-state-received';
+/** Connection closed or left: clear the level/XP/mana HUD. No payload. */
+export const NOC_STATE_RESET = 'noc-state-reset';
 /** Self player only: authoritative HP/max after monster hit. Payload: { hp: number; maxHp: number } */
 export const HP_UPDATED_RECEIVED = 'hp-updated-received';
 /** Server: a player died (viewers + victim). Payload: PlayerDiedEventData */

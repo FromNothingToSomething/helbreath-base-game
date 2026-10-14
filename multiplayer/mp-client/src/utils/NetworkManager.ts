@@ -59,10 +59,14 @@ import {
     WeatherChanged,
     WeatherMode as WeatherModeProto,
 } from '../proto/generated/network';
+import type { NocSnapshot } from '../proto/generated/nocthemar';
+import { toNocViewModel } from './NocView';
 import { EventBus, type ToastRequestedEvent } from '../game/EventBus';
 import { LOAD_PLAYER_ITEM_APPEARANCE_ASSETS_ON_DEMAND } from '../Config';
 import { runSafeSync } from './SafeEntry';
 import {
+    NOC_STATE_RECEIVED,
+    NOC_STATE_RESET,
     CAST_AOE_SPELL_RECEIVED,
     CAST_DIRECTIONAL_AOE_SPELL_RECEIVED,
     MONSTER_CAST_AOE_SPELL_RECEIVED,
@@ -510,6 +514,7 @@ export class NetworkManager {
                         this.pendingInitialGameWorldState = undefined;
                         this.lastSelfHp = undefined;
                         this.lastSelfMaxHp = undefined;
+                        EventBus.emit(NOC_STATE_RESET);
                         this.initialStateMergeBase = undefined;
                         this.clearOtherPlayersState();
                         this.clearMonstersInViewState();
@@ -916,6 +921,7 @@ export class NetworkManager {
             this.selfPlayerId = undefined;
             this.lastSelfHp = undefined;
             this.lastSelfMaxHp = undefined;
+            EventBus.emit(NOC_STATE_RESET);
             this.initialStateMergeBase = undefined;
             this.latestInventorySnapshot = undefined;
             this.clearOtherPlayersState();
@@ -1287,6 +1293,9 @@ export class NetworkManager {
                 case 'hpUpdated':
                     this.handleHpUpdated(message.payload.value);
                     break;
+                case 'nocStateUpdated':
+                    this.handleNocSnapshot(message.payload.value.state);
+                    break;
                 case 'playerDied':
                     this.handlePlayerDied(message.payload.value);
                     break;
@@ -1367,6 +1376,7 @@ export class NetworkManager {
 
     private handleInitialState(data: InitialState): void {
         this.selfPlayerId = String(data.playerId);
+        this.handleNocSnapshot(data.noc);
         this.npcDirectoryByCatalogId.clear();
         for (const row of data.npcDirectory) {
             this.npcDirectoryByCatalogId.set(row.id, row.name);
@@ -1910,6 +1920,14 @@ export class NetworkManager {
             knockbackFromX: data.knockbackFromX,
             knockbackFromY: data.knockbackFromY,
         } satisfies PlayerTakeDamageEventData);
+    }
+
+    /** Level/XP/mana of the local player (InitialState.noc or NocStateUpdated.state): converted once, then handed to the UI store via EventBus. */
+    private handleNocSnapshot(snapshot: NocSnapshot | undefined): void {
+        if (!snapshot) {
+            return;
+        }
+        EventBus.emit(NOC_STATE_RECEIVED, toNocViewModel(snapshot));
     }
 
     private handleHpUpdated(data: HpUpdated): void {

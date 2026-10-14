@@ -24,6 +24,7 @@ import { ServerDialog } from './ui/dialogs/ServerDialog';
 import { PerformanceDialog } from './ui/dialogs/PerformanceDialog';
 import { ConnectDialog } from './ui/dialogs/ConnectDialog';
 import { DeathDialog } from './ui/dialogs/DeathDialog';
+import { NocHudDialog } from './ui/dialogs/NocHudDialog';
 import { ConnectingDialog } from './ui/dialogs/ConnectingDialog';
 import { ServerMessageDialog } from './ui/dialogs/ServerMessageDialog';
 import { ChatDialog } from './ui/dialogs/ChatDialog';
@@ -47,6 +48,7 @@ import { performanceDialogStore, setPerformanceDialogOpen } from './ui/store/Per
 import { appStore, setCursorSpriteKey } from './ui/store/App.store';
 import { CURSOR_GRAB_1, CURSOR_GRAB_2 } from './constants/SpriteKeys';
 import { deathDialogStore } from './ui/store/DeathDialog.store';
+import { nocStore } from './ui/store/Noc.store';
 import { connectingDialogStore } from './ui/store/ConnectingDialog.store';
 import { connectDialogStore } from './ui/store/ConnectDialog.store';
 import { serverMessageDialogStore, setServerMessageDialogOpen } from './ui/store/ServerMessageDialog.store';
@@ -57,6 +59,8 @@ const DIALOG_STACK_POSITION = { x: DIALOG_START_X, y: DIALOG_START_Y };
 const CHILD_DIALOG_POSITION = { x: 310, y: DIALOG_START_Y };
 const CONNECTING_DIALOG_Z_INDEX = 9999;
 const SERVER_MESSAGE_DIALOG_Z_INDEX = 19000;
+/** Level/XP/mana HUD sits under the draggable dialogs (they start at 10000). */
+const NOC_HUD_Z_INDEX = 9000;
 
 function App()
 {
@@ -122,6 +126,11 @@ function App()
             y: Math.max(0, (window.innerHeight - dialogHeight) / 2)
         };
     });
+    // Level/XP/mana HUD: bottom-left, fixed (not draggable).
+    const nocHudPosition = {
+        x: 20,
+        y: typeof window === 'undefined' ? 0 : Math.max(0, window.innerHeight - 100),
+    };
     // Z-index state for bringing dialogs to front
     const [dialogZIndex, setDialogZIndex] = useState(10000);
     const [mapDialogZIndex, setMapDialogZIndex] = useState(10001);
@@ -158,6 +167,7 @@ function App()
     const showChatDialog = useStore(chatDialogStore, (state) => state.isOpen);
     const chatMessages = useStore(chatDialogStore, (state) => state.messages);
     const showDeathDialog = useStore(deathDialogStore, (state) => state.isOpen);
+    const showNocHud = useStore(nocStore, (state) => state.isOpen);
     const showConnectingDialog = useStore(connectingDialogStore, (state) => state.isOpen);
     const showConnectDialog = useStore(connectDialogStore, (state) => state.isOpen);
     const showServerMessageDialog = useStore(serverMessageDialogStore, (state) => state.isOpen);
@@ -912,6 +922,13 @@ function App()
                 <NpcHoverOverlay />
                 <PlayerHoverOverview />
                 
+                {showNocHud && (
+                    <NocHudDialog
+                        position={nocHudPosition}
+                        zIndex={NOC_HUD_Z_INDEX}
+                    />
+                )}
+
                 {showDeathDialog && (
                     <DeathDialog
                         position={deathDialogPosition}
