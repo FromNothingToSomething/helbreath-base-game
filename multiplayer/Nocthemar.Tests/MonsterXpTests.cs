@@ -46,7 +46,7 @@ public class MonsterXpTests {
 
     [Fact]
     public void Negative_monster_xp_is_rejected_at_startup() {
-        var bad = new MonsterConfig(1, "a", "b", 1, Xp: -1);
+        var bad = new MonsterConfig(0, "a", "b", 1, Xp: -1);
 
         var ex = Assert.Throws<InvalidOperationException>(() => Config_BuildCatalog(bad));
         Assert.Contains("xp", ex.Message, StringComparison.Ordinal);
@@ -54,7 +54,7 @@ public class MonsterXpTests {
 
     [Fact]
     public void Valid_monster_xp_passes_catalog_validation() =>
-        Config_BuildCatalog(new MonsterConfig(1, "a", "b", 1, Xp: 0), new MonsterConfig(2, "c", "d", 1));
+        Config_BuildCatalog(new MonsterConfig(0, "a", "b", 1, Xp: 0), new MonsterConfig(1, "c", "d", 1));
 
     private static void Config_BuildCatalog(params MonsterConfig[] monsters) => Server.Config.BuildMonsterCatalog(monsters);
 }
