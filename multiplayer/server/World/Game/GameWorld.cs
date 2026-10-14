@@ -1227,6 +1227,11 @@ public sealed class GameWorld : IWorkerWorld {
     private void OnWorldTick() {
         scheduler.TriggerDueItems();
         var now = DateTimeOffset.UtcNow;
+        var nowMs = now.ToUnixTimeMilliseconds();
+        foreach (var player in playersBySessionId.Values) {
+            player.TickMana(nowMs);
+        }
+
         var profileMonsterAi = settings.Debug.ProfileMonstersAILoop;
         if (monstersByMonsterId.Count > 0) {
             if (profileMonsterAi) {

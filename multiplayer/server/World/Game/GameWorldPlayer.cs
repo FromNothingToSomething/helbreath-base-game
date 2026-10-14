@@ -395,6 +395,48 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         return result.LevelsGained;
     }
 
+    /// <summary>Upper bound on the time credited to one <see cref="TickMana"/> call, so a stalled world or a long gap cannot grant a burst of mana.</summary>
+    private const long MaxManaTickDeltaMs = 5000;
+    /// <summary>Unix ms of the previous <see cref="TickMana"/>; 0 until the first call.</summary>
+    private long lastManaTickMs;
+    /// <summary>Regen not yet worth a whole point, carried to the next tick so regen is independent of the tick rate.</summary>
+    private double manaFraction;
+
+    /// <summary>
+    /// Regenerates mana by elapsed time (<see cref="StatPipeline.ManaRegen"/> per second), not per tick, with sub-point remainders carried over.
+    /// The first call only sets the time baseline. Dead players do not regenerate; mana above the maximum is clamped down.
+    /// Allocation-free; world thread only. Returns true when <see cref="Mana"/> changed.
+    /// </summary>
+    public bool TickMana(long nowMs) {
+        var last = lastManaTickMs;
+        lastManaTickMs = nowMs;
+        if (last == 0 || nowMs <= last) {
+            return false;
+        }
+
+        var max = stats.MaxMana;
+        if (mana >= max) {
+            var clamped = mana > max;
+            mana = max;
+            manaFraction = 0;
+            return clamped;
+        }
+
+        if (IsDead) {
+            return false;
+        }
+
+        manaFraction += stats.ManaRegen * Math.Min(nowMs - last, MaxManaTickDeltaMs) / 1000.0;
+        var gained = (int)Math.Min(manaFraction, max);
+        if (gained <= 0) {
+            return false;
+        }
+
+        manaFraction -= gained;
+        mana = Math.Min(max, mana + gained);
+        return true;
+    }
+
     /// <summary>Snapshot of the persisted NOCTHEMAR block with the live mana.</summary>
     public NocState CreateNocState() => noc with { Mana = mana };
 
