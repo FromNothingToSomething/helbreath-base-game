@@ -884,7 +884,10 @@ public sealed class GameWorld : IWorkerWorld {
 
     /// <summary>Persists appearance on the player, strips gender-incompatible equipment (broadcast to self and nearby), and fans out <see cref="Mmorpg.Network.PlayerAppearanceChanged"/> to nearby observers (excluding the actor).</summary>
     private void HandleChangePlayerAppearance(GameWorldPlayer player, ChangePlayerAppearanceRequest request) {
-        player.SetAppearance((int)request.Gender, (int)request.SkinColor, request.HairStyleIndex, request.UnderwearColorIndex);
+        if (!RaceAppearanceRules.TryApply(player, races, (int)request.Gender, (int)request.SkinColor, request.HairStyleIndex, request.UnderwearColorIndex)) {
+            return; // not allowed for the player's race (T31): nothing changes, nothing is broadcast
+        }
+
         Inventory.UnequipItemsInvalidForCurrentGender(gameWorldRef, player);
         var msg = NetworkManager.CreatePlayerAppearanceChanged(
             player.PlayerId,
