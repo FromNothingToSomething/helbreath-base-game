@@ -1,0 +1,138 @@
+name: NOCTHEMAR E2E (nightly)
+
+# T21. Kept out of build.yml on purpose: it starts real servers and takes minutes, so it must not gate every PR.
+# Runs nightly and on demand (Actions > NOCTHEMAR E2E (nightly) > Run workflow).
+#
+# 1. Load, measured on the same runner, one after the other: the upstream base commit and HEAD, same simulator, same parameters.
+#    Metric = sustainedConnectedClients: the number of simulated clients still connected when the first unexpected disconnect
+#    occurs, or when the simulator is stopped after ramp+hold seconds if none occurred (so at most the requested count).
+#    HEAD must stay within the tolerance (default ±5 %) of the base value.
+# 2. State: simulated clients receive XP through NocGrantXpRequest (nocthemar.debug=true), reconnect immediately (disconnect grace),
+#    then the server is stopped gracefully and restarted, and every client reconnects: the NocSnapshot (level, xp, xp_to_next, mana,
+#    max_mana) received in InitialState must be identical to the last one the server sent before the disconnect.
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      clients:
+        description: Simulated clients for the load comparison
+        default: '150'
+      ramp_seconds:
+        description: Ramp-up time (s)
+        default: '15'
+      hold_seconds:
+        description: Hold time after the ramp (s)
+        default: '30'
+      tolerance_percent:
+        description: Allowed deviation of HEAD vs base (%)
+        default: '5'
+      state_clients:
+        description: Clients for the reconnect/state check
+        default: '20'
+      base_ref:
+        description: Base commit (upstream, before NOCTHEMAR)
+        default: '734f95cf506d666f3a39dbce5bb292f43d162c47'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: noc-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CLIENTS: ${{ github.event.inputs.clients || '150' }}
+  RAMP: ${{ github.event.inputs.ramp_seconds || '15' }}
+  HOLD: ${{ github.event.inputs.hold_seconds || '30' }}
+  TOLERANCE: ${{ github.event.inputs.tolerance_percent || '5' }}
+  STATE_CLIENTS: ${{ github.event.inputs.state_clients || '20' }}
+  BASE_REF: ${{ github.event.inputs.base_ref || '734f95cf506d666f3a39dbce5bb292f43d162c47' }}
+  OUT: ${{ github.workspace }}/e2e-out
+
+jobs:
+  e2e:
+    name: Load vs base, then state after reconnect
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+
+      - name: Install client dependencies (resolution of the generated stubs)
+        working-directory: multiplayer/mp-client
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Install tools dependencies and generate TS stubs
+        working-directory: tools
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run proto:generate
+
+      - name: Build HEAD server
+        run: |
+          dotnet build multiplayer/server/Server.csproj --configuration Release --output "$RUNNER_TEMP/server-head"
+          cp -r multiplayer/server/Config "$RUNNER_TEMP/server-head/Config"
+
+      - name: Build base server (upstream commit)
+        run: |
+          git worktree add "$RUNNER_TEMP/base-src" "$BASE_REF"
+          dotnet build "$RUNNER_TEMP/base-src/multiplayer/server/Server.csproj" --configuration Release --output "$RUNNER_TEMP/server-base"
+          cp -r "$RUNNER_TEMP/base-src/multiplayer/server/Config" "$RUNNER_TEMP/server-base/Config"
+
+      - name: Load, base
+        run: tools/noc-e2e/run.sh load "$RUNNER_TEMP/server-base" base "$CLIENTS" "$RAMP" "$HOLD"
+
+      - name: Load, HEAD
+        run: tools/noc-e2e/run.sh load "$RUNNER_TEMP/server-head" head "$CLIENTS" "$RAMP" "$HOLD"
+
+      - name: Compare HEAD with base
+        run: |
+          set -o pipefail
+          rc=0
+          tools/noc-e2e/run.sh compare "$OUT/base.txt" "$OUT/head.txt" "$TOLERANCE" | tee "$OUT/compare.txt" || rc=$?
+          {
+            echo '### Load: clients held before the first disconnect'
+            echo "Requested $CLIENTS clients, ramp ${RAMP}s, hold ${HOLD}s. Metric: clients still connected at the first unexpected disconnect, or at the end of the hold if none."
+            echo
+            echo "- base ($BASE_REF): $(cat "$OUT/base.txt")"
+            echo "- HEAD: $(cat "$OUT/head.txt")"
+            echo "- $(cat "$OUT/compare.txt")"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
+
+      - name: State identical after reconnect and server restart
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail
+          rc=0
+          tools/noc-e2e/run.sh state "$RUNNER_TEMP/server-head" "$STATE_CLIENTS" || rc=$?
+          {
+            echo '### State after reconnect'
+            echo "$STATE_CLIENTS clients: reconnect in the disconnect grace period, then after a graceful server restart."
+            echo
+            tail -qn 2 "$OUT/state-grant.log" "$OUT/state-verify.log" 2>/dev/null | sed 's/^/    /'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
+
+      - name: Upload logs and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: noc-e2e
+          path: |
+            e2e-out/
+            tools/report_*.html
+          if-no-files-found: ignore

@@ -145,3 +145,8 @@ dotnet run -- <file-or-folder-path> [mode] [divergence]
 | `NearTransparency` | Percentage-based transparency; configurable divergence (0–50%, default 5) |
 
 **Divergence** (NearTransparency only): Third argument, 0–50. Pixels within this percentage of the color key become transparent.
+
+## NOCTHEMAR checks (CI only)
+
+- `proto-roundtrip/`: T23. `decode.ts` (TS) and `decode.py` (Python) decode `multiplayer/Nocthemar.Tests/Fixtures/proto/noc_state_updated.bin`, which `ProtoFixtureTests` (C#) must reproduce byte for byte. Workflow `proto-roundtrip.yml`.
+- `noc-e2e/`: T21. `run.sh` + `reconnect.ts`, nightly workflow `noc-e2e.yml` (not part of `build.yml`): clients held before the first disconnect, HEAD vs upstream base (±5 %), and NocSnapshot identical after reconnect and after a server restart.
