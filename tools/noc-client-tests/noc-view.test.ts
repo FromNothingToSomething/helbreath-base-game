@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { toNocViewModel } from '../../multiplayer/mp-client/src/utils/NocView';
-import { InitialState, ServerMessage } from '../../multiplayer/mp-client/src/proto/generated/network';
+import { ClientMessage, InitialState, ServerMessage } from '../../multiplayer/mp-client/src/proto/generated/network';
 import { NocSnapshot } from '../../multiplayer/mp-client/src/proto/generated/nocthemar';
 
 const snapshot = (over: Partial<NocSnapshot> = {}): NocSnapshot => ({
@@ -76,4 +76,16 @@ test('large xp survives the wire as bigint', () => {
     }).finish();
     const decoded = ServerMessage.decode(bytes);
     assert.equal(decoded.payload?.$case === 'nocStateUpdated' ? decoded.payload.value.state?.xp : undefined, 9_007_199_254_740_993n);
+});
+
+test('NocGrantXpRequest is client field 100 on the wire', () => {
+    const bytes = ClientMessage.encode({
+        payload: { $case: 'nocGrantXpRequest', value: { amount: 100n } },
+    }).finish();
+    assert.equal(bytes[0], 0xa2);
+    assert.equal(bytes[1], 0x06);
+
+    const decoded = ClientMessage.decode(bytes);
+    assert.equal(decoded.payload?.$case, 'nocGrantXpRequest');
+    assert.equal(decoded.payload?.$case === 'nocGrantXpRequest' ? decoded.payload.value.amount : undefined, 100n);
 });
