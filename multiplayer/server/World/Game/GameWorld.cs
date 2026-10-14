@@ -762,6 +762,9 @@ public sealed class GameWorld : IWorkerWorld {
             case ClientMessage.PayloadOneofCase.AuthenticateRequest:
                 playerConnection.RequestDisconnect("Authenticate messages are only allowed before joining the game world.");
                 break;
+            case ClientMessage.PayloadOneofCase.NocChooseClassRequest:
+            case ClientMessage.PayloadOneofCase.NocLearnSkillRequest:
+            case ClientMessage.PayloadOneofCase.NocRespecRequest:
             case ClientMessage.PayloadOneofCase.NocGrantXpRequest:
                 nocDispatcher.Handle(playerConnection, message.Message);
                 break;
