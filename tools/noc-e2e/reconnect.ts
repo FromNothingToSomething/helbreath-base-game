@@ -4,6 +4,10 @@
  * grant themselves XP (nocthemar.debug must be true), then reconnect; the state received in InitialState must equal the one the server
  * last sent before the disconnect, field by field: level, xp, xpToNext, mana, maxMana, raceId, max HP and the appearance.
  *
+ * T54 extends it to the classes: after the XP grant each client chooses a class (client i takes class i % 5), learns the first ready skill of that class
+ * (class 3 has none ready at slot 0 and learns nothing), and a second class choice must be refused. classId, skillPoints and the learned skills are part of the
+ * compared state, so they must also survive the reconnect and the server restart.
+ *
  * Usage (from tools/):
  *   node --import tsx ./noc-e2e/reconnect.ts --mode grant  --state state.json [--clients 20] [--ip 127.0.0.1] [--port 1337]
  *   node --import tsx ./noc-e2e/reconnect.ts --mode verify --state state.json [--ip ...] [--port ...]
@@ -25,11 +29,15 @@ import type { NocSnapshot } from '../../multiplayer/mp-client/src/proto/generate
 interface Snap {
     level: number; xp: string; xpToNext: string; mana: number; maxMana: number;
     raceId: number; maxHp: number; gender: number; skinColor: number; hairStyleIndex: number; underwearColorIndex: number;
+    classId: number | null; skillPoints: number; skills: number[];
 }
 interface Creation { raceId: number; gender: number; skinColor: number; hairStyleIndex: number; underwearColorIndex: number }
 interface SavedClient { id: string; name: string; amount: string; race: number; creation: Creation; state: Snap }
 
 const RACE_COUNT = 6;
+const CLASS_COUNT = 5;
+// First ready skill of each class at level 1 (Skills.json): knight 1000, singer 1100, shapeshifter 1200, class 3 none, forgemaster 1410.
+const FIRST_SKILL: (number | null)[] = [1000, 1100, 1200, null, 1410];
 // Every shipped race allows the whole appearance domain, so these always pass the server's validation; each client gets its own mix.
 const creationFor = (index: number, raceId: number): Creation => ({
     raceId,
@@ -52,6 +60,7 @@ const toSnap = (s: NocSnapshot, look: Look): Snap => ({
     level: s.level, xp: s.xp.toString(), xpToNext: s.xpToNext.toString(), mana: s.mana, maxMana: s.maxMana,
     raceId: s.raceId, maxHp: look.maxHp, gender: look.gender, skinColor: look.skinColor,
     hairStyleIndex: look.hairStyleIndex, underwearColorIndex: look.underwearColorIndex,
+    classId: s.classId ?? null, skillPoints: s.skillPoints, skills: [...s.skills],
 });
 const same = (a: Snap, b: Snap) => JSON.stringify(a) === JSON.stringify(b);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -66,6 +75,7 @@ class Bot {
     last: Snap | undefined;
     private look: Look | undefined;
     updates = 0;
+    refusals: string[] = [];
 
     constructor(readonly id: string, readonly name: string) {}
 
@@ -74,6 +84,7 @@ class Bot {
         this.last = undefined;
         this.look = undefined;
         this.updates = 0;
+        this.refusals = [];
         const done = new Promise<void>((res, rej) => { this.ready = res; this.failed = rej; });
         this.ws = new WebSocket(`ws://${ip}:${port}/ws`);
         this.ws.binaryType = 'arraybuffer';
@@ -97,6 +108,9 @@ class Bot {
                 case 'nocStateUpdated':
                     if (m.payload.value.state && this.look) { this.last = toSnap(m.payload.value.state, this.look); this.updates++; }
                     break;
+                case 'nocActionRefused':
+                    this.refusals.push(m.payload.value.reason);
+                    break;
                 case 'initialGameWorldState':
                     clearTimeout(timeout);
                     this.ping = setInterval(() => this.send({ payload: { $case: 'pingRequest', value: { sequence: this.pingSeq++ } } }), 1000);
@@ -113,6 +127,14 @@ class Bot {
 
     grant(amount: bigint): void {
         this.send({ payload: { $case: 'nocGrantXpRequest', value: { amount } } });
+    }
+
+    chooseClass(classId: number): void {
+        this.send({ payload: { $case: 'nocChooseClassRequest', value: { classId } } });
+    }
+
+    learn(skillId: number): void {
+        this.send({ payload: { $case: 'nocLearnSkillRequest', value: { skillId } } });
     }
 
     async close(): Promise<void> {
@@ -198,7 +220,23 @@ async function grant(): Promise<void> {
         bot.grant(amount);
         await waitFor(() => bot.updates > 0, 5000, `${bot.name}: no NocStateUpdated after the grant (is nocthemar.debug true?)`);
         await sleep(700); // 14 ticks: last state wins, mana regen included
+
+        const cls = i % CLASS_COUNT;
+        const skill = FIRST_SKILL[cls];
+        bot.chooseClass(cls);
+        await waitFor(() => bot.last?.classId === cls, 5000, `${bot.name}: class ${cls} not applied (${bot.refusals.join('; ')})`);
+        if (skill !== null) {
+            bot.learn(skill);
+            await waitFor(() => bot.last?.skills.includes(skill) === true, 5000, `${bot.name}: skill ${skill} not learned (${bot.refusals.join('; ')})`);
+        }
+        bot.chooseClass((cls + 1) % CLASS_COUNT); // the class is final: refused, state unchanged
+        await waitFor(() => bot.refusals.length > 0, 5000, `${bot.name}: second class choice was not refused`);
+        await sleep(700);
         const s1 = bot.last!;
+        const expectedPoints = s1.level - 1 - (skill === null ? 0 : 1); // 1 point per level from level 2, 1 spent
+        if (s1.classId !== cls || s1.skillPoints !== expectedPoints || JSON.stringify(s1.skills) !== JSON.stringify(skill === null ? [] : [skill])) {
+            throw new Error(`${bot.name}: unexpected class state ${JSON.stringify({ classId: s1.classId, skillPoints: s1.skillPoints, skills: s1.skills })}, expected class ${cls} points ${expectedPoints} skill ${skill}`);
+        }
         if (s1.level <= before.level) throw new Error(`${bot.name}: no level-up from ${amount} XP (before=${JSON.stringify(before)}, after=${JSON.stringify(s1)})`);
         await bot.close();
 
