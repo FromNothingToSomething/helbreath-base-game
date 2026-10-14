@@ -105,6 +105,7 @@ public class CharacterCreationTests {
         Assert.Equal(p.MaxHp, p.Hp);
         var snapshot = p.CreateNocSnapshot();
         Assert.Equal(snapshot.MaxMana, snapshot.Mana);
+        Assert.Equal(2, snapshot.RaceId);
         Assert.False(p.TryFlushNocUpdates()); // the join snapshot carries it
         Assert.Empty(sent);
     }

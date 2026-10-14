@@ -309,6 +309,7 @@ public static class NetworkManager {
         snapshot.HairStyleIndex = p.HairStyleIndex;
         snapshot.UnderwearColorIndex = p.UnderwearColorIndex;
         snapshot.CharacterName = p.CharacterName;
+        snapshot.RaceId = p.RaceId;
         snapshot.AttackSpeedMs = p.AttackSpeedMs;
         snapshot.CastSpeedMs = p.CastSpeedMs;
         p.FillActiveTemporaryEffects(snapshot);
@@ -1093,13 +1094,14 @@ public static class NetworkManager {
         };
     }
 
-    public static NocSnapshot CreateNocSnapshot(int level, long xp, long xpToNext, int mana, int maxMana) {
+    public static NocSnapshot CreateNocSnapshot(int level, long xp, long xpToNext, int mana, int maxMana, int raceId = 0) {
         return new NocSnapshot {
             Level = level,
             Xp = xp,
             XpToNext = xpToNext,
             Mana = mana,
             MaxMana = maxMana,
+            RaceId = raceId,
         };
     }
 

@@ -537,7 +537,7 @@ public class GameWorldPlayer : GameWorldActionableEntity {
     public NocSnapshot CreateNocSnapshot() {
         NocSnapshotsBuilt++;
         progression.TryGetXpToNext(noc.Level, out var xpToNext);
-        return NetworkManager.CreateNocSnapshot(noc.Level, noc.Xp, xpToNext, mana, stats.MaxMana);
+        return NetworkManager.CreateNocSnapshot(noc.Level, noc.Xp, xpToNext, mana, stats.MaxMana, race.Id);
     }
 
     /// <summary>
