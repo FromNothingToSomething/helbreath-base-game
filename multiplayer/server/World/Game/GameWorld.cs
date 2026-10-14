@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using Mmorpg.Network;
 using Server;
 using Server.Helpers;
+using Server.Nocthemar.Data;
 using Server.Utils;
 
 namespace Server.World.Game;
@@ -168,6 +169,7 @@ public sealed class GameWorld : IWorkerWorld {
     private readonly IReadOnlyDictionary<int, SpellConfig> spellsById;
     private readonly IReadOnlyDictionary<int, ItemConfig> itemsById;
     private readonly IReadOnlyDictionary<int, NpcConfig> npcsById;
+    private readonly ProgressionConfig progression;
     private readonly Dictionary<long, GameWorldMonster> monstersByMonsterId = new();
     private readonly Dictionary<long, GameWorldNPC> npcsByNpcId = new();
     /// <summary>Diagnostics: sum of per-loop <see cref="TimeSpan.TotalMilliseconds"/> since last 1s log; only on worker thread.</summary>
@@ -193,6 +195,7 @@ public sealed class GameWorld : IWorkerWorld {
         IReadOnlyDictionary<int, SpellConfig> spellsById,
         IReadOnlyDictionary<int, ItemConfig> itemsById,
         IReadOnlyDictionary<int, NpcConfig> npcsById,
+        ProgressionConfig progression,
         IReadOnlyList<GameWorldDwellAreaConfig>? dwellAreas = null,
         IReadOnlyList<GameWorldTeleportSet>? teleportLocs = null,
         IReadOnlyList<GameWorldNpcPlacementConfig>? initialNpcs = null) {
@@ -209,6 +212,7 @@ public sealed class GameWorld : IWorkerWorld {
         ArgumentNullException.ThrowIfNull(spellsById);
         ArgumentNullException.ThrowIfNull(itemsById);
         ArgumentNullException.ThrowIfNull(npcsById);
+        this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
         this.monsterCatalog = monsterCatalog;
         this.monstersById = monstersById;
         this.spellsById = spellsById;
@@ -1196,7 +1200,8 @@ public sealed class GameWorld : IWorkerWorld {
             itemsById,
             settings.MovementSpeedViolationsChecker,
             settings.Ping.VarianceSampleSize,
-            settings.Timings.AntiHackTimingLagFactor);
+            settings.Timings.AntiHackTimingLagFactor,
+            progression);
         player.SetInitialState(spawnLocation.X, spawnLocation.Y);
         occupancyTracker.SetOccupied(spawnLocation.X, spawnLocation.Y);
         playersBySessionId[sessionId] = player;

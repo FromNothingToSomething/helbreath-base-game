@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Threading.RateLimiting;
 using Mmorpg.Network;
 using Server.Helpers;
+using Server.Nocthemar.Core;
+using Server.Nocthemar.Data;
 using Server.Utils;
 using Server.World;
 
@@ -39,6 +41,12 @@ public class GameWorldPlayer : GameWorldActionableEntity {
     private int hp;
     /// <summary>Authoritative max HP for this session; sent in <see cref="Mmorpg.Network.InitialState"/> and <see cref="Mmorpg.Network.HpUpdated"/>.</summary>
     private int maxHp;
+    /// <summary>Level/XP block (mana is tracked live in <see cref="mana"/> and merged back by <see cref="CreateNocState"/>).</summary>
+    private NocState noc;
+    private readonly StatPipeline stats;
+    private readonly ProgressionService progressionService;
+    /// <summary>Current mana; clamped to [0, <see cref="MaxMana"/>].</summary>
+    private int mana;
     private int movementSpeedMs = 220;
     /// <summary>Unix ms of the last accepted movement request for delta-based speed checks.</summary>
     private long lastMovementRequestMs;
@@ -104,6 +112,13 @@ public class GameWorldPlayer : GameWorldActionableEntity {
 
     public int Hp => hp;
     public int MaxHp => maxHp;
+    public int Level => noc.Level;
+    /// <summary>XP accumulated toward the next level.</summary>
+    public long Xp => noc.Xp;
+    public int Mana => mana;
+    public int MaxMana => stats.MaxMana;
+    /// <summary>Stat resolution for this player (level base plus modifiers); world thread only.</summary>
+    public StatPipeline Stats => stats;
     /// <summary>True when <see cref="hp"/> is below 1 (lethal threshold).</summary>
     public bool IsDead => hp < 1;
     public bool Disconnected { get; private set; }
@@ -187,7 +202,9 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         IReadOnlyDictionary<int, ItemConfig> itemsById,
         Server.MovementSpeedViolationCheckConfig violationCheckConfig,
         int pingVarianceSampleSize,
-        double antiHackTimingLagFactor) {
+        double antiHackTimingLagFactor,
+        ProgressionConfig progression) {
+        ArgumentNullException.ThrowIfNull(progression);
         ArgumentNullException.ThrowIfNull(sendMessage);
         ArgumentNullException.ThrowIfNull(requestDisconnect);
         ArgumentNullException.ThrowIfNull(requestWorldChange);
@@ -201,6 +218,9 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         this.movementSpeedViolationCheckConfig = violationCheckConfig;
         this.antiHackTimingLagFactor = antiHackTimingLagFactor;
         inventoryManager = new InventoryManager(itemsById);
+        progressionService = new ProgressionService(progression);
+        noc = progressionService.Normalize(null);
+        stats = new StatPipeline(progression, noc.Level);
         playerPingTracker = new PlayerPingTracker(pingVarianceSampleSize);
         movementSpeedViolations = CreateMovementSpeedViolationsLimiter(violationCheckConfig);
         SetFacingDirection(1);
@@ -342,9 +362,41 @@ public class GameWorldPlayer : GameWorldActionableEntity {
 
     public void SetInitialState(int x, int y) {
         SetGridPosition(x, y);
-        hp = 1000;
-        maxHp = 1000;
+        ApplyNocState(progressionService.Normalize(null));
+        hp = maxHp;
     }
+
+    /// <summary>Adopts a (normalized) level/XP/mana block: refreshes the stat base, <see cref="maxHp"/> and clamps HP and mana to the new maxima.</summary>
+    private void ApplyNocState(NocState state) {
+        noc = state;
+        stats.SetLevel(noc.Level);
+        maxHp = stats.MaxHp;
+        hp = Math.Min(hp, maxHp);
+        mana = Math.Clamp(noc.Mana, 0, stats.MaxMana);
+    }
+
+    /// <summary>
+    /// Grants XP with chained level-ups. On level-up the stat base is refreshed, HP is refilled (unless dead) and mana is refilled to <see cref="MaxMana"/>.
+    /// Returns the number of levels gained; the caller is responsible for notifying the client.
+    /// </summary>
+    public int GrantXp(long amount) {
+        var result = progressionService.GrantXp(CreateNocState(), amount);
+        if (result.LevelsGained == 0) {
+            noc = result.State;
+            return 0;
+        }
+
+        ApplyNocState(result.State);
+        mana = stats.MaxMana;
+        if (!IsDead) {
+            hp = maxHp;
+        }
+
+        return result.LevelsGained;
+    }
+
+    /// <summary>Snapshot of the persisted NOCTHEMAR block with the live mana.</summary>
+    public NocState CreateNocState() => noc with { Mana = mana };
 
     /// <summary>Applies persisted player-configurable settings after spawn creation while keeping clamp logic centralized in the existing setters.</summary>
     public void ApplyPersistedState(PlayerPersistenceState state) {
@@ -369,6 +421,11 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         }
         if (!string.IsNullOrWhiteSpace(state.CharacterName)) {
             SetCharacterName(state.CharacterName);
+        }
+        if (state.Noc is not null) {
+            // Absent block (legacy save already migrated, or a state built without one) keeps the level-1 defaults from SetInitialState.
+            ApplyNocState(progressionService.Normalize(state.Noc));
+            hp = maxHp;
         }
     }
 
@@ -396,7 +453,9 @@ public class GameWorldPlayer : GameWorldActionableEntity {
             FacingDirection,
             inventoryManager.CreatePersistedBagItems(),
             inventoryManager.CreatePersistedEquippedItems(),
-            characterName);
+            characterName,
+            SchemaVersion: CharacterSchema.Current,
+            Noc: CreateNocState());
     }
 
     /// <summary>Sets the display name from authenticate or loaded persistence.</summary>

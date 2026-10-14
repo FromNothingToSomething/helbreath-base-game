@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Server;
+using Server.Nocthemar.Data;
 using Server.Utils;
 using Server.World.Global;
 using Server.World.Game;
@@ -13,15 +14,18 @@ public sealed class WorldRegistry : IDisposable {
     private readonly ConcurrentDictionary<string, GameWorld> gameWorldsById;
     private readonly WorldWorker[] workers;
     private readonly SettingsConfig settings;
+    private readonly ProgressionConfig progression;
     /// <summary>Round-robin counter for assigning new worlds when no explicit worker index is configured.</summary>
     private int nextWorkerIndex;
     private bool disposed;
 
     public WorldRegistry(
         SettingsConfig settings,
+        ProgressionConfig progression,
         int workerCount,
         TimeSpan tickInterval) {
         ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(progression);
         if (workerCount <= 0) {
             throw new ArgumentOutOfRangeException(nameof(workerCount), "Worker count must be greater than zero.");
         }
@@ -29,6 +33,7 @@ public sealed class WorldRegistry : IDisposable {
         gameWorldsById = new ConcurrentDictionary<string, GameWorld>(StringComparer.Ordinal);
         workers = new WorldWorker[workerCount];
         this.settings = settings;
+        this.progression = progression;
 
         for (var index = 0; index < workerCount; index++) {
             workers[index] = new WorldWorker($"game-world-worker-{index}", tickInterval);
@@ -61,7 +66,7 @@ public sealed class WorldRegistry : IDisposable {
         ArgumentNullException.ThrowIfNull(itemsById);
         ArgumentNullException.ThrowIfNull(npcsById);
 
-        var world = new GameWorld(id, map, music, occupancyTracker, settings, monsterCatalog, monstersById, spellsById, itemsById, npcsById, dwellAreas, teleportLocs, initialNpcs);
+        var world = new GameWorld(id, map, music, occupancyTracker, settings, monsterCatalog, monstersById, spellsById, itemsById, npcsById, progression, dwellAreas, teleportLocs, initialNpcs);
         if (!gameWorldsById.TryAdd(id, world)) {
             throw new InvalidOperationException($"A game world with id '{id}' is already registered.");
         }
