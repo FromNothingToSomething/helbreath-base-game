@@ -8,6 +8,9 @@ using Google.Protobuf;
 using Microsoft.Extensions.Hosting;
 using Mmorpg.Network;
 using Server;
+using Server.Nocthemar.Core;
+using Server.Nocthemar.Data;
+using Server.Nocthemar.Persistence;
 using Server.World;
 using Server.World.Game;
 using Server.World.Global;
@@ -31,7 +34,11 @@ var app = builder.Build();
 var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 var settings = await Config.LoadSettings();
 var gcMonitor = settings.Debug.EnableGcLogs ? new GarbageCollectorMonitor() : null;
-var worldRegistry = new WorldRegistry(settings, workerCount: settings.Threads.GameWorldWorkers, tickInterval: TimeSpan.FromMilliseconds(settings.GameWorld.TickInterval));
+var progression = await ProgressionConfig.LoadAsync();
+var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");
+// Fails fast on an unusable persistence.provider, before any world worker starts.
+var characterStore = CharacterStoreFactory.Create(settings.Persistence, charsDirectory, progression);
+var worldRegistry = new WorldRegistry(settings, progression, workerCount: settings.Threads.GameWorldWorkers, tickInterval: TimeSpan.FromMilliseconds(settings.GameWorld.TickInterval));
 var sessionsByNetworkId = new ConcurrentDictionary<string, PlayerSession>(StringComparer.Ordinal);
 var sessionsByServerId = new ConcurrentDictionary<Guid, PlayerSession>();
 
@@ -49,7 +56,6 @@ var itemsById = Config.BuildItemCatalog(itemsConfig);
 var npcsConfig = await Config.LoadNpcsConfig();
 var npcsById = Config.BuildNpcCatalog(npcsConfig);
 var mapsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Config", "maps");
-var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");
 foreach (var gw in gameWorlds) {
     Config.ValidateGameWorldDwellAreas(gw, monstersById);
     Config.ValidateGameWorldNpcPlacements(gw, npcsById);
@@ -107,7 +113,7 @@ var worldTransferTask = RunWorldTransferLoopAsync(
     worldRegistry,
     sessionsByServerId,
     worldTransferRequests.Reader,
-    charsDirectory,
+    characterStore,
     worldTransferCts.Token);
 app.Lifetime.ApplicationStopping.Register(() => {
     // Persist before disposing the registry: workers stop processing mailboxes on dispose, so WebSocket
@@ -115,7 +121,7 @@ app.Lifetime.ApplicationStopping.Register(() => {
     try {
         // Run persistence on the thread pool so we await async work without sync-over-async on the host
         // stopping callback (avoids SynchronizationContext deadlocks).
-        Task.Run(() => PersistAllPlayerStatesOnShutdownAsync(worldRegistry, sessionsByServerId, charsDirectory))
+        Task.Run(() => PersistAllPlayerStatesOnShutdownAsync(worldRegistry, sessionsByServerId, characterStore))
             .GetAwaiter()
             .GetResult();
     } catch (Exception ex) {
@@ -226,6 +232,11 @@ app.Map("/ws", async context => {
                     return;
                 }
 
+                if (!NetworkIdValidator.IsValid(clientMessage.AuthenticateRequest.Id)) {
+                    RequestDisconnect("Invalid authentication id.");
+                    return;
+                }
+
                 var initialGameWorldId = settings.SpawnToRandomMap && gameWorlds.Length > 0
                     ? gameWorlds[Random.Shared.Next(gameWorlds.Length)].Id
                     : settings.InitialMap;
@@ -246,7 +257,17 @@ app.Map("/ws", async context => {
                 var session = authenticatedSession ?? throw new InvalidOperationException("Authenticated session was not created.");
                 PlayerPersistenceState? loadedPlayerState = null;
                 if (!isReconnect) {
-                    loadedPlayerState = LoadPlayerPersistenceState(charsDirectory, session.NetworkId);
+                    string? loadRefusal;
+                    (loadedPlayerState, loadRefusal) = await CharacterAccess.TryLoadAsync(characterStore, session.NetworkId, receiveCts.Token);
+                    if (loadRefusal is not null) {
+                        // The session was registered by TryAuthenticatePlayer but never joined a world: release it, and leave the save untouched.
+                        sessionsByNetworkId.TryRemove(new KeyValuePair<string, PlayerSession>(session.NetworkId, session));
+                        sessionsByServerId.TryRemove(new KeyValuePair<Guid, PlayerSession>(session.SessionId, session));
+                        authenticatedSession = null;
+                        RequestDisconnect(loadRefusal);
+                        return;
+                    }
+
                     if (loadedPlayerState is not null) {
                         var (resolvedGameWorldId, resolvedPlayerState) = ResolveLoadedPlayerJoin(
                             loadedPlayerState,
@@ -368,7 +389,7 @@ app.Map("/ws", async context => {
                         authenticatedSession.SessionId,
                         CancellationToken.None);
                     if (persistedState is not null) {
-                        SavePlayerPersistenceState(charsDirectory, authenticatedSession.NetworkId, persistedState);
+                        await CharacterAccess.TrySaveAsync(characterStore, authenticatedSession.NetworkId, persistedState);
                     }
                 } catch (Exception exception) when (exception is ObjectDisposedException or KeyNotFoundException) {
                 } catch (Exception ex) {
@@ -518,51 +539,6 @@ static string GetCurrentGameWorldId(PlayerSession session) {
     }
 }
 
-static PlayerPersistenceState? LoadPlayerPersistenceState(string charsDirectory, string networkId) {
-    var savePath = GetPlayerSavePath(charsDirectory, networkId);
-    if (savePath is null || !File.Exists(savePath)) {
-        return null;
-    }
-
-    try {
-        using var stream = File.OpenRead(savePath);
-        return JsonSerializer.Deserialize<PlayerPersistenceState>(stream);
-    } catch (Exception ex) {
-        Console.Error.WriteLine($"[Server] Failed to load player save '{savePath}': {ex.Message}");
-        return null;
-    }
-}
-
-static void SavePlayerPersistenceState(string charsDirectory, string networkId, PlayerPersistenceState state) {
-    ArgumentNullException.ThrowIfNull(state);
-    var savePath = GetPlayerSavePath(charsDirectory, networkId);
-    if (savePath is null) {
-        Console.Error.WriteLine($"[Server] Skipping player save for invalid network id '{networkId}'.");
-        return;
-    }
-
-    try {
-        Directory.CreateDirectory(charsDirectory);
-        var tempPath = $"{savePath}.{Guid.NewGuid():N}.tmp";
-        var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(tempPath, json);
-        File.Move(tempPath, savePath, overwrite: true);
-    } catch (Exception ex) {
-        Console.Error.WriteLine($"[Server] Failed to save player '{networkId}' to '{savePath}': {ex}");
-    }
-}
-
-static string? GetPlayerSavePath(string charsDirectory, string networkId) {
-    if (string.IsNullOrWhiteSpace(networkId) ||
-        networkId.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
-        networkId.Contains(Path.DirectorySeparatorChar) ||
-        networkId.Contains(Path.AltDirectorySeparatorChar)) {
-        return null;
-    }
-
-    return Path.Combine(charsDirectory, $"{networkId}.json");
-}
-
 static (string WorldId, PlayerPersistenceState State) ResolveLoadedPlayerJoin(
     PlayerPersistenceState loadedState,
     WorldRegistry worldRegistry,
@@ -624,7 +600,7 @@ static async Task<PlayerPersistenceState?> CapturePlayerPersistenceStateAsync(
 static async Task PersistAllPlayerStatesOnShutdownAsync(
     WorldRegistry worldRegistry,
     ConcurrentDictionary<Guid, PlayerSession> sessionsByServerId,
-    string charsDirectory) {
+    ICharacterStore characterStore) {
     foreach (var session in sessionsByServerId.Values.ToArray()) {
         string worldId;
         Guid sessionId;
@@ -642,7 +618,8 @@ static async Task PersistAllPlayerStatesOnShutdownAsync(
                 sessionId,
                 CancellationToken.None).ConfigureAwait(false);
             if (persistedState is not null) {
-                SavePlayerPersistenceState(charsDirectory, networkId, persistedState);
+                var saved = await CharacterAccess.TrySaveAsync(characterStore, networkId, persistedState).ConfigureAwait(false);
+                Console.WriteLine(CharacterLog.FormatShutdownLine(networkId, persistedState, saved));
             }
         } catch (Exception exception) when (exception is ObjectDisposedException or KeyNotFoundException) {
         } catch (Exception ex) {
@@ -714,7 +691,7 @@ static async Task RunWorldTransferLoopAsync(
     WorldRegistry worldRegistry,
     ConcurrentDictionary<Guid, PlayerSession> sessionsByServerId,
     ChannelReader<WorldTransferRequest> worldTransferRequests,
-    string charsDirectory,
+    ICharacterStore characterStore,
     CancellationToken cancellationToken) {
     await foreach (var request in worldTransferRequests.ReadAllAsync(cancellationToken)) {
         PlayerSession? session = null;
@@ -789,7 +766,7 @@ static async Task RunWorldTransferLoopAsync(
                     request.SessionId,
                     cancellationToken);
                 if (persistedState is not null) {
-                    SavePlayerPersistenceState(charsDirectory, session.NetworkId, persistedState);
+                    await CharacterAccess.TrySaveAsync(characterStore, session.NetworkId, persistedState);
                 }
             } catch (Exception ex) when (ex is not OperationCanceledException) {
                 Console.Error.WriteLine($"[Server] Failed to transfer player '{request.SessionId}' to world '{request.TargetWorldId}': {ex}");
