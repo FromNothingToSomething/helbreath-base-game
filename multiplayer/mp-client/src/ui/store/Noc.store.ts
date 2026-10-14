@@ -12,6 +12,8 @@ interface NocStoreState {
     catalog: CatalogModel | null;
     /** Latest refusal of a class/skill request, cleared by the next accepted state. */
     refusal: string | null;
+    /** The class / skill-tree panel. */
+    panelOpen: boolean;
 }
 
 const initialState: NocStoreState = {
@@ -19,6 +21,7 @@ const initialState: NocStoreState = {
     view: null,
     catalog: null,
     refusal: null,
+    panelOpen: false,
 };
 
 const { store: nocStore } = createDialogStore(initialState);
@@ -35,6 +38,14 @@ export const setNocCatalog = (catalog: CatalogModel) => {
 
 export const setNocRefusal = (refusal: string | null) => {
     nocStore.setState((state) => ({ ...state, refusal }));
+};
+
+export const toggleNocPanel = () => {
+    nocStore.setState((state) => ({ ...state, panelOpen: !state.panelOpen, refusal: null }));
+};
+
+export const closeNocPanel = () => {
+    nocStore.setState((state) => ({ ...state, panelOpen: false }));
 };
 
 export const resetNoc = () => {

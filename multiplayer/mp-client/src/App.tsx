@@ -25,6 +25,7 @@ import { PerformanceDialog } from './ui/dialogs/PerformanceDialog';
 import { ConnectDialog } from './ui/dialogs/ConnectDialog';
 import { DeathDialog } from './ui/dialogs/DeathDialog';
 import { NocHudDialog } from './ui/dialogs/NocHudDialog';
+import { NocSkillsDialog } from './ui/dialogs/NocSkillsDialog';
 import { ConnectingDialog } from './ui/dialogs/ConnectingDialog';
 import { ServerMessageDialog } from './ui/dialogs/ServerMessageDialog';
 import { ChatDialog } from './ui/dialogs/ChatDialog';
@@ -138,6 +139,25 @@ function App()
             return;
         }
         getNetworkManager(game)?.sendNocGrantXpRequest(100n);
+    };
+    const nocPanelPosition = { x: 20, y: 60 };
+    const handleNocChooseClass = (classId: number) => {
+        const game = phaserRef.current?.game;
+        if (game) {
+            getNetworkManager(game)?.sendNocChooseClassRequest(classId);
+        }
+    };
+    const handleNocLearnSkill = (skillId: number) => {
+        const game = phaserRef.current?.game;
+        if (game) {
+            getNetworkManager(game)?.sendNocLearnSkillRequest(skillId);
+        }
+    };
+    const handleNocRespec = () => {
+        const game = phaserRef.current?.game;
+        if (game) {
+            getNetworkManager(game)?.sendNocRespecRequest();
+        }
     };
     // Z-index state for bringing dialogs to front
     const [dialogZIndex, setDialogZIndex] = useState(10000);
@@ -935,6 +955,16 @@ function App()
                         position={nocHudPosition}
                         zIndex={NOC_HUD_Z_INDEX}
                         onDebugGrantXp={import.meta.env.DEV ? handleDebugGrantXp : undefined}
+                    />
+                )}
+
+                {showNocHud && (
+                    <NocSkillsDialog
+                        position={nocPanelPosition}
+                        zIndex={NOC_HUD_Z_INDEX + 1}
+                        onChooseClass={handleNocChooseClass}
+                        onLearnSkill={handleNocLearnSkill}
+                        onDebugRespec={import.meta.env.DEV ? handleNocRespec : undefined}
                     />
                 )}
 

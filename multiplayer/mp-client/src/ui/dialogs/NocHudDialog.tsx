@@ -2,7 +2,7 @@ import { useStore } from '@tanstack/react-store';
 import type { CSSProperties } from 'react';
 import { HeadlessDraggableDialog } from './HeadlessDraggableDialog';
 import { RpgButton } from '../components/RpgButton';
-import { nocStore } from '../store/Noc.store';
+import { nocStore, toggleNocPanel } from '../store/Noc.store';
 
 interface NocHudDialogProps {
     position: { x: number; y: number };
@@ -46,6 +46,7 @@ function Bar({ ratio, color, label }: { ratio: number; color: string; label: str
 /** Minimal level / XP / mana HUD fed by Noc.store (server-authoritative). Fixed position, not draggable. */
 export function NocHudDialog({ position, zIndex, onBringToFront, onDebugGrantXp }: NocHudDialogProps) {
     const view = useStore(nocStore, (state) => state.view);
+    const hasCatalog = useStore(nocStore, (state) => state.catalog !== null);
     if (!view) {
         return null;
     }
@@ -77,6 +78,11 @@ export function NocHudDialog({ position, zIndex, onBringToFront, onDebugGrantXp 
                 <div style={{ fontWeight: 'bold' }}>Lv {view.level} · {view.raceName}</div>
                 <Bar ratio={view.xpRatio} color="var(--rpg-gold-dark)" label={xpLabel} />
                 <Bar ratio={view.manaRatio} color="#2f5fbf" label={`${view.mana} / ${view.maxMana} MP`} />
+                {hasCatalog && (
+                    <RpgButton variant="compact" onClick={toggleNocPanel}>
+                        {view.classId === null ? 'Choose a class' : view.skillPoints > 0 ? `Skills (${view.skillPoints})` : 'Skills'}
+                    </RpgButton>
+                )}
                 {onDebugGrantXp && <RpgButton onClick={onDebugGrantXp}>+100 XP (debug)</RpgButton>}
             </div>
         </HeadlessDraggableDialog>
