@@ -41,9 +41,9 @@ public sealed class RaceMigrationTests : IDisposable {
     // --- Migration1To2 -------------------------------------------------------------------------------------------------
 
     [Fact]
-    public void Schema_is_now_two_and_the_default_chain_has_two_steps() {
-        Assert.Equal(2, CharacterSchema.Current);
-        Assert.Equal(2, CharacterMigrator.CreateDefault(TestSupport.Progression()).CurrentVersion);
+    public void The_default_chain_ends_at_the_current_schema() {
+        Assert.Equal(3, CharacterSchema.Current);
+        Assert.Equal(CharacterSchema.Current, CharacterMigrator.CreateDefault(TestSupport.Progression()).CurrentVersion);
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public sealed class RaceMigrationTests : IDisposable {
     public void A_schema_zero_save_goes_through_both_steps() {
         var migrated = CharacterMigrator.CreateDefault(TestSupport.Progression()).Migrate(Sample(CharacterSchema.Legacy, null));
 
-        Assert.Equal(2, migrated.SchemaVersion);
+        Assert.Equal(CharacterSchema.Current, migrated.SchemaVersion);
         Assert.Equal(1, migrated.Noc!.Level);
         Assert.Equal(NocState.LegacyRaceId, migrated.Noc.RaceId);
     }
@@ -95,7 +95,7 @@ public sealed class RaceMigrationTests : IDisposable {
     public void A_schema_one_save_gets_the_legacy_race_and_keeps_its_progress() {
         var migrated = CharacterMigrator.CreateDefault(TestSupport.Progression()).Migrate(Sample(1, WithRace(null)));
 
-        Assert.Equal(2, migrated.SchemaVersion);
+        Assert.Equal(CharacterSchema.Current, migrated.SchemaVersion);
         Assert.Equal(WithRace(0), migrated.Noc);
     }
 

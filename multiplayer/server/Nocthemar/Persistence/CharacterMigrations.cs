@@ -55,6 +55,20 @@ public sealed class Migration1To2 : ICharacterMigration {
             : state with { Noc = state.Noc with { RaceId = state.Noc.RaceId ?? NocState.LegacyRaceId } };
 }
 
+/// <summary>
+/// 2 -> 3: the NOCTHEMAR block gets layout <see cref="NocState.CurrentV"/> (class, skills and kills are new nullable/zero fields, so no value changes: nobody has a class yet).
+/// A null block stays null. Characters keep their race, level, XP and mana untouched.
+/// </summary>
+public sealed class Migration2To3 : ICharacterMigration {
+    public int From => 2;
+    public int To => 3;
+
+    public PlayerPersistenceState Apply(PlayerPersistenceState state) =>
+        state.Noc is null
+            ? state
+            : state with { Noc = state.Noc with { V = Math.Max(state.Noc.V, NocState.CurrentV) } };
+}
+
 /// <summary>Applies the ordered migrations needed to bring a loaded save to <see cref="CurrentVersion"/>.</summary>
 public sealed class CharacterMigrator {
     private readonly ICharacterMigration[] chain;
@@ -88,7 +102,7 @@ public sealed class CharacterMigrator {
 
     /// <summary>Chain for the shipped schema (<see cref="CharacterSchema.Current"/>).</summary>
     public static CharacterMigrator CreateDefault(ProgressionConfig progression) =>
-        new([new Migration0To1(progression), new Migration1To2()], CharacterSchema.Current);
+        new([new Migration0To1(progression), new Migration1To2(), new Migration2To3()], CharacterSchema.Current);
 
     /// <summary>
     /// Upgrades <paramref name="state"/> to <see cref="CurrentVersion"/>.
