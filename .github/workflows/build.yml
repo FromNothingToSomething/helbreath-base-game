@@ -103,5 +103,11 @@ jobs:
       - name: Generate TS stubs
         run: pnpm run proto:generate
 
+      # The generated stubs live in mp-client/src/proto/generated, so Node resolves their imports (@bufbuild/protobuf) from
+      # mp-client/node_modules, not from tools/node_modules.
+      - name: Install client dependencies (resolution of the generated stubs)
+        working-directory: multiplayer/mp-client
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
       - name: Test
         run: node --import tsx --test noc-client-tests/*.test.ts

@@ -17,7 +17,7 @@ public class PlayerPersistenceRoundTripTests : IDisposable {
         try {
             Directory.Delete(dir, recursive: true);
         } catch (IOException) {
-        } catch (DirectoryNotFoundException) {
+            // Also covers DirectoryNotFoundException (the directory is created lazily by the first save): cleanup is best effort.
         }
     }
 
