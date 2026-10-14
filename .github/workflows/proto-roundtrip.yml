@@ -1,0 +1,125 @@
+name: Proto round-trip (C# -> TS)
+
+# T23: C# encodes canonical messages, TS decodes them, and both are compared with the committed binary fixture.
+# The paths below do not exist yet; the workflow starts running automatically once T15 (nocthemar.proto) and T23 land.
+# No server or client is started: only the serialized bytes cross the language boundary.
+on:
+  push:
+    paths:
+      - multiplayer/proto/nocthemar.proto
+      - multiplayer/Nocthemar.Tests/ProtoFixtureTests.cs
+      - multiplayer/Nocthemar.Tests/Fixtures/proto/**
+      - tools/proto-roundtrip/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: proto-roundtrip-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FIXTURE_DIR: multiplayer/Nocthemar.Tests/Fixtures/proto
+  FIXTURE_BIN: noc_state_updated.bin
+  FIXTURE_EXPECTED: expected.json
+
+jobs:
+  prerequisites:
+    name: Check T15/T23 files exist
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify required files
+        run: |
+          missing=0
+          for f in \
+            multiplayer/proto/nocthemar.proto \
+            multiplayer/Nocthemar.Tests/ProtoFixtureTests.cs \
+            "$FIXTURE_DIR/$FIXTURE_BIN" \
+            "$FIXTURE_DIR/$FIXTURE_EXPECTED" \
+            tools/proto-roundtrip/decode.ts; do
+            if [ ! -f "$f" ]; then echo "::error::missing $f (T15/T23 not committed yet)"; missing=1; fi
+          done
+          exit $missing
+
+  encode-cs:
+    name: Encode in C# and compare with fixture
+    needs: prerequisites
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore multiplayer/Nocthemar.Tests/Nocthemar.Tests.csproj
+
+      # ProtoFixtureTests encodes the canonical ServerMessage, writes it to NOC_FIXTURE_OUT, and asserts the bytes equal the committed fixture.
+      - name: Encode and compare
+        env:
+          NOC_FIXTURE_OUT: ${{ runner.temp }}/fixture-cs
+        run: >
+          dotnet test multiplayer/Nocthemar.Tests/Nocthemar.Tests.csproj
+          --configuration Release --no-restore
+          --filter "FullyQualifiedName~ProtoFixtureTests"
+
+      - name: Upload C# encoded bytes
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixture-cs
+          path: ${{ runner.temp }}/fixture-cs/${{ env.FIXTURE_BIN }}
+          if-no-files-found: error
+
+  decode-ts:
+    name: Decode in TS and compare
+    needs: encode-cs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+
+      - name: Install client dependencies and generate TS stubs
+        working-directory: multiplayer/mp-client
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run proto:generate
+
+      - name: Install tools dependencies (tsx)
+        working-directory: tools
+        run: pnpm install --frozen-lockfile
+
+      - name: Download C# encoded bytes
+        uses: actions/download-artifact@v4
+        with:
+          name: fixture-cs
+          path: ${{ runner.temp }}/fixture-cs
+
+      - name: Bytes from C# are identical to the committed fixture
+        run: cmp "${{ runner.temp }}/fixture-cs/${FIXTURE_BIN}" "${FIXTURE_DIR}/${FIXTURE_BIN}"
+
+      # decode.ts decodes both files with the generated TS types and exits non-zero unless the result equals expected.json.
+      - name: Decode C# bytes
+        working-directory: tools
+        run: >
+          node --import tsx ./proto-roundtrip/decode.ts
+          --bin "${{ runner.temp }}/fixture-cs/${FIXTURE_BIN}"
+          --expected "../${FIXTURE_DIR}/${FIXTURE_EXPECTED}"
+
+      - name: Decode committed fixture
+        working-directory: tools
+        run: >
+          node --import tsx ./proto-roundtrip/decode.ts
+          --bin "../${FIXTURE_DIR}/${FIXTURE_BIN}"
+          --expected "../${FIXTURE_DIR}/${FIXTURE_EXPECTED}"
