@@ -9,7 +9,9 @@ name: NOCTHEMAR E2E (nightly)
 #    HEAD must stay within the tolerance (default ±5 %) of the base value.
 # 2. State: simulated clients receive XP through NocGrantXpRequest (nocthemar.debug=true), reconnect immediately (disconnect grace),
 #    then the server is stopped gracefully and restarted, and every client reconnects: the NocSnapshot (level, xp, xp_to_next, mana,
-#    max_mana) received in InitialState must be identical to the last one the server sent before the disconnect.
+#    max_mana, race_id) received in InitialState, plus the max HP and the appearance, must be identical to the last ones the server
+#    sent before the disconnect. T36: the clients cycle over the 6 races (client i = race i % 6, created through AuthenticateRequest.creation);
+#    after the restart each client asks for ANOTHER race, which the server must ignore (existing save). Needs state_clients >= 6.
 on:
   schedule:
     - cron: '17 2 * * *'
@@ -28,7 +30,7 @@ on:
         description: Allowed deviation of HEAD vs base (%)
         default: '5'
       state_clients:
-        description: Clients for the reconnect/state check
+        description: Clients for the reconnect/state check (at least 6, one per race)
         default: '20'
       base_ref:
         description: Base commit (upstream, before NOCTHEMAR)
@@ -121,9 +123,9 @@ jobs:
           tools/noc-e2e/run.sh state "$RUNNER_TEMP/server-head" "$STATE_CLIENTS" || rc=$?
           {
             echo '### State after reconnect'
-            echo "$STATE_CLIENTS clients: reconnect in the disconnect grace period, then after a graceful server restart."
+            echo "$STATE_CLIENTS clients cycling over the 6 races: reconnect in the disconnect grace period, then after a graceful server restart. Compared: level, xp, mana, race, max HP, appearance."
             echo
-            tail -qn 2 "$OUT/state-grant.log" "$OUT/state-verify.log" 2>/dev/null | sed 's/^/    /'
+            grep -hE "races covered|race [0-9]|ALL IDENTICAL|MISMATCH|FAIL|ERROR" "$OUT/state-grant.log" "$OUT/state-verify.log" 2>/dev/null | sed 's/^/    /'
           } >> "$GITHUB_STEP_SUMMARY"
           exit $rc
 
