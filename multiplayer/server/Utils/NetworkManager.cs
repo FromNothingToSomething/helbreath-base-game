@@ -77,7 +77,8 @@ public static class NetworkManager {
         int hairStyleIndex,
         int underwearColorIndex,
         IEnumerable<NpcConfig> npcDirectory,
-        NocSnapshot noc) {
+        NocSnapshot noc,
+        NocCatalog? nocCatalog = null) {
         ArgumentNullException.ThrowIfNull(noc);
         ArgumentNullException.ThrowIfNull(spells);
         ArgumentNullException.ThrowIfNull(itemsDirectory);
@@ -109,6 +110,7 @@ public static class NetworkManager {
             HairStyleIndex = hairStyleIndex,
             UnderwearColorIndex = underwearColorIndex,
             Noc = noc,
+            NocCatalog = nocCatalog,
         };
         foreach (var spell in spells) {
             var entry = new SpellEntry {
@@ -1094,14 +1096,34 @@ public static class NetworkManager {
         };
     }
 
-    public static NocSnapshot CreateNocSnapshot(int level, long xp, long xpToNext, int mana, int maxMana, int raceId = 0) {
-        return new NocSnapshot {
+    public static NocSnapshot CreateNocSnapshot(
+        int level, long xp, long xpToNext, int mana, int maxMana, int raceId = 0,
+        int? classId = null, int skillPoints = 0, IReadOnlyList<int>? skills = null) {
+        var snapshot = new NocSnapshot {
             Level = level,
             Xp = xp,
             XpToNext = xpToNext,
             Mana = mana,
             MaxMana = maxMana,
             RaceId = raceId,
+            SkillPoints = skillPoints,
+        };
+        if (classId.HasValue) {
+            snapshot.ClassId = classId.Value;
+        }
+
+        if (skills is not null) {
+            snapshot.Skills.AddRange(skills);
+        }
+
+        return snapshot;
+    }
+
+    public static ServerMessage CreateNocActionRefused(string reason) {
+        return new ServerMessage {
+            NocActionRefused = new NocActionRefused {
+                Reason = reason ?? "",
+            },
         };
     }
 

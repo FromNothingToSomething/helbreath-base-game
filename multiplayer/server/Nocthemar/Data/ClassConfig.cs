@@ -8,7 +8,8 @@ namespace Server.Nocthemar.Data;
 /// <summary>Raw <c>Config/Nocthemar/Classes.json</c> shape; validated by <see cref="ClassConfig.Parse"/>.</summary>
 public sealed record ClassesFile(int SchemaVersion = 0, List<ClassFile>? Classes = null);
 
-public sealed record ClassFile(int Id = -1, string? Key = null, string? Name = null, string? Role = null, List<BranchFile>? Branches = null);
+/// <summary><c>RecommendedRaces</c>: race ids shown as a hint when picking a class (a soft recommendation, never a restriction).</summary>
+public sealed record ClassFile(int Id = -1, string? Key = null, string? Name = null, string? Role = null, List<BranchFile>? Branches = null, List<int>? RecommendedRaces = null);
 
 public sealed record BranchFile(int Id = -1, string? Key = null, string? Name = null, string? Role = null);
 
@@ -16,12 +17,13 @@ public sealed record BranchDefinition(int Id, string Key, string Name, string Ro
 
 /// <summary>One validated class: 3 branches of 8 skills (the skills themselves live in <see cref="SkillConfig"/>).</summary>
 public sealed class ClassDefinition {
-    internal ClassDefinition(int id, string key, string name, string role, BranchDefinition[] branches) {
+    internal ClassDefinition(int id, string key, string name, string role, BranchDefinition[] branches, int[] recommendedRaceIds) {
         Id = id;
         Key = key;
         Name = name;
         Role = role;
         Branches = branches;
+        RecommendedRaceIds = recommendedRaceIds;
     }
 
     public int Id { get; }
@@ -34,11 +36,15 @@ public sealed class ClassDefinition {
 
     /// <summary>Indexed by branch id (0, 1, 2).</summary>
     public IReadOnlyList<BranchDefinition> Branches { get; }
+
+    /// <summary>Races the class is recommended for (UI hint only; the server accepts any race x class pair).</summary>
+    public IReadOnlyList<int> RecommendedRaceIds { get; }
 }
 
 /// <summary>Validated class catalog (<c>Config/Nocthemar/Classes.json</c>). Immutable after <see cref="Parse"/>; startup must fail on any invalid value.</summary>
 public sealed class ClassConfig {
     public const int SupportedSchemaVersion = 1;
+    private const int MaxRecommendedRaces = 64;
 
     private static readonly Regex KeyPattern = new("^[a-z][a-z0-9_]{1,31}$", RegexOptions.Compiled);
 
@@ -59,6 +65,17 @@ public sealed class ClassConfig {
     public bool TryGet(int id, out ClassDefinition definition) => byId.TryGetValue(id, out definition!);
 
     public bool Contains(int id) => byId.ContainsKey(id);
+
+    /// <summary>Checks that every recommended race id is a listed race; throws listing each unknown one (startup check: Classes.json and Races.json are separate files).</summary>
+    public void ValidateRaces(RaceConfig races) {
+        ArgumentNullException.ThrowIfNull(races);
+        var problems = Classes
+            .SelectMany(c => c.RecommendedRaceIds.Where(r => !races.Contains(r)).Select(r => $"class '{c.Key}' recommends unknown race {r}"))
+            .ToArray();
+        if (problems.Length > 0) {
+            throw new InvalidOperationException($"Invalid Classes.json: {string.Join("; ", problems)}.");
+        }
+    }
 
     /// <summary>Loads <c>Config/Nocthemar/Classes.json</c> relative to the process working directory.</summary>
     public static async Task<ClassConfig> LoadAsync(string? path = null) {
@@ -155,7 +172,12 @@ public sealed class ClassConfig {
             }
         }
 
-        return errors.Count > before ? null : new ClassDefinition(file.Id, file.Key!, file.Name!, file.Role!, [.. branches]);
+        var recommended = file.RecommendedRaces ?? [];
+        if (recommended.Count > MaxRecommendedRaces || recommended.Any(r => r < 0 || r > ModifierSources.MaxId) || recommended.Distinct().Count() != recommended.Count) {
+            errors.Add($"{where}.recommendedRaces must hold at most {MaxRecommendedRaces} distinct race ids in [0, {ModifierSources.MaxId}]");
+        }
+
+        return errors.Count > before ? null : new ClassDefinition(file.Id, file.Key!, file.Name!, file.Role!, [.. branches], [.. recommended]);
     }
 
     private static void CheckKey(string? key, string where, HashSet<string> keys, List<string> errors) {

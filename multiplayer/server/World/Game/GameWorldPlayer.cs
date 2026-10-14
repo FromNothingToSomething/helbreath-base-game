@@ -237,6 +237,7 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         stats = new StatPipeline(progression, noc.Level);
         if (nocContent is not null) {
             skillService = nocContent.Rules;
+            NocCatalog = nocContent.Catalog;
             skillEffects = new SkillEffects(stats, new SkillHookTable(nocContent.Handlers));
         }
 
@@ -459,6 +460,9 @@ public class GameWorldPlayer : GameWorldActionableEntity {
         skillEffects?.Apply(skillService!.Learned(noc));
     }
 
+    /// <summary>Classes and skills for the client's first <c>InitialState</c>; null when the world has no class content.</summary>
+    public NocCatalog? NocCatalog { get; }
+
     /// <summary>Id of the chosen class (<c>Classes.json</c>); null until one is chosen.</summary>
     public int? ClassId => noc.ClassId;
 
@@ -633,7 +637,7 @@ public class GameWorldPlayer : GameWorldActionableEntity {
     public NocSnapshot CreateNocSnapshot() {
         NocSnapshotsBuilt++;
         progression.TryGetXpToNext(noc.Level, out var xpToNext);
-        return NetworkManager.CreateNocSnapshot(noc.Level, noc.Xp, xpToNext, mana, stats.MaxMana, race.Id);
+        return NetworkManager.CreateNocSnapshot(noc.Level, noc.Xp, xpToNext, mana, stats.MaxMana, race.Id, noc.ClassId, SkillPoints, noc.Skills);
     }
 
     /// <summary>

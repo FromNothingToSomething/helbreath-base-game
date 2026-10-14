@@ -10,6 +10,11 @@ import json, sys, unicodedata, re, pathlib
 LEVELS = [1, 3, 6, 10, 14, 18, 24, 30]
 KINDS = ["passive", "active", "passive", "active", "passive", "active", "passive", "ultimate"]
 
+# Recommended races per class key (ids of Races.json: 0 valdornien, 1 spectral, 2 sang_mele, 3 reanime, 4 chimere, 5 lychen). Valdorniens suit every class.
+RECOMMENDED = {
+ "chevalier_osseux": [0, 2, 3, 4, 5], "chantre_fer": [0, 1], "metamorphe": [0, 2, 5], "necrophante": [0, 1, 3], "forgeur_abysses": [0, 1, 4],
+}
+
 # class: (key, name, role, [(branch key, branch name, branch role, [(skill name, description) x 8])])
 C = [
  ("chevalier_osseux", "Chevalier d'Osseux", "Tank / DPS mêlée", [
@@ -124,7 +129,8 @@ def main(out):
     classes, skills, keys = [], [], set()
     for ci, (ckey, cname, crole, branches) in enumerate(C):
         classes.append({"id": ci, "key": ckey, "name": cname, "role": crole,
-                        "branches": [{"id": bi, "key": b[0], "name": b[1], "role": b[2]} for bi, b in enumerate(branches)]})
+                        "branches": [{"id": bi, "key": b[0], "name": b[1], "role": b[2]} for bi, b in enumerate(branches)],
+                        "recommendedRaces": RECOMMENDED[ckey]})
         for bi, (_, _, _, rows) in enumerate(branches):
             assert len(rows) == 8
             for si, (name, desc) in enumerate(rows):

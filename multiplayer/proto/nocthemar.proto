@@ -17,6 +17,12 @@ message NocSnapshot {
   int32 max_mana = 5;
   // Id of the character's race (Races.json). 0 = default race, which is also what an absent field decodes to.
   int32 race_id = 6;
+  // Id of the chosen class (Classes.json); absent until one is chosen.
+  optional int32 class_id = 7;
+  // Skill points earned and not spent yet.
+  int32 skill_points = 8;
+  // Ids of the learned skills (Skills.json), ascending.
+  repeated int32 skills = 9;
 }
 
 // Sent once, inside AuthenticateRequest, to create a character. Ignored by the server when a save already exists for the id
@@ -35,6 +41,71 @@ message NocCharacterCreation {
 // Debug only: the server ignores it unless Settings.json nocthemar.debug is true.
 message NocGrantXpRequest {
   int64 amount = 1;
+}
+
+// Chooses the class. The server refuses it (NocActionRefused) when a class was already chosen or the id is unknown.
+message NocChooseClassRequest {
+  int32 class_id = 1;
+}
+
+// Learns one skill of the character's class; refused (NocActionRefused) when a rule is not met. Accepted: the next NocStateUpdated carries the new skills and points.
+message NocLearnSkillRequest {
+  int32 skill_id = 1;
+}
+
+// Debug only: forgets every learned skill (the class stays). Ignored unless Settings.json nocthemar.debug is true.
+message NocRespecRequest {
+}
+
+// Sent to the sender only when a NOCTHEMAR request is refused; `reason` is a short English sentence meant to be shown to the player.
+message NocActionRefused {
+  string reason = 1;
+}
+
+message NocBranchInfo {
+  // 0-2, the order of the branches inside the class.
+  int32 id = 1;
+  string key = 2;
+  string name = 3;
+  string role = 4;
+}
+
+message NocClassInfo {
+  int32 id = 1;
+  string key = 2;
+  string name = 3;
+  string role = 4;
+  repeated NocBranchInfo branches = 5;
+  // Races (Races.json ids) the class is recommended for. Only a hint for the UI: the server accepts any race x class pair.
+  repeated int32 recommended_race_ids = 6;
+}
+
+message NocSkillInfo {
+  // 1000 + class * 100 + branch * 10 + slot.
+  int32 id = 1;
+  string key = 2;
+  string name = 3;
+  int32 class_id = 4;
+  int32 branch = 5;
+  // 0-7 inside the branch (slot 7 is the ultimate).
+  int32 slot = 6;
+  // Character level required.
+  int32 level = 7;
+  // 0 = passive, 1 = active, 2 = ultimate.
+  int32 kind = 8;
+  // Skill points to learn it.
+  int32 cost = 9;
+  string desc = 10;
+  // False: listed in the tree but not learnable yet.
+  bool ready = 11;
+  // Id of the skill that must be learned first; 0 = none.
+  int32 prerequisite_id = 12;
+}
+
+// Static classes and skills, sent once at the first join of a session (not again on world transfers).
+message NocCatalog {
+  repeated NocClassInfo classes = 1;
+  repeated NocSkillInfo skills = 2;
 }
 
 // Self only. At most one per world tick and player (other state messages such as HpUpdated may accompany it); the state is the latest one at the end of that tick (last state wins).

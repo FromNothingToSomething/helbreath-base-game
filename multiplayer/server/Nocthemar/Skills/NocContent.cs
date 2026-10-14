@@ -1,5 +1,7 @@
 using Server.Nocthemar.Core;
+using Mmorpg.Network;
 using Server.Nocthemar.Data;
+using Server.Nocthemar.Net;
 
 namespace Server.Nocthemar.Skills;
 
@@ -17,10 +19,14 @@ public sealed class NocContent {
         Classes = classes;
         Skills = skills;
         Rules = new SkillService(classes, skills, progression);
+        Catalog = NocCatalogBuilder.Build(classes, skills, Rules);
     }
 
     public ClassConfig Classes { get; }
     public SkillConfig Skills { get; }
     public SkillService Rules { get; }
     public SkillHandlerRegistry Handlers { get; }
+
+    /// <summary>The wire catalog, built once; shared by every <c>InitialState</c> (read-only: never modify it).</summary>
+    public NocCatalog Catalog { get; }
 }

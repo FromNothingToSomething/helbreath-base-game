@@ -40,6 +40,7 @@ var progression = await ProgressionConfig.LoadAsync();
 var races = await RaceConfig.LoadAsync();
 var classes = await ClassConfig.LoadAsync();
 var classSkills = await SkillConfig.LoadAsync(classes);
+classes.ValidateRaces(races);
 // No skill handler exists yet in this module step: every shipped skill is a catalog entry or a pure stat passive. Handlers are registered here as they are written.
 var nocContent = new NocContent(classes, classSkills, progression, new SkillHandlerRegistry());
 var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");

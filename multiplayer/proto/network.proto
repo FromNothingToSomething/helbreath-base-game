@@ -97,6 +97,9 @@ message ClientMessage {
     KillAllNpcsRequest kill_all_npcs_request = 41;
     // NOCTHEMAR requests start at 100 (see nocthemar.proto).
     NocGrantXpRequest noc_grant_xp_request = 100;
+    NocChooseClassRequest noc_choose_class_request = 101;
+    NocLearnSkillRequest noc_learn_skill_request = 102;
+    NocRespecRequest noc_respec_request = 103;
   }
 }
 
@@ -450,6 +453,7 @@ message ServerMessage {
     LogoutCancelled logout_cancelled = 63;
     // NOCTHEMAR messages start at 100 (see nocthemar.proto).
     NocStateUpdated noc_state_updated = 100;
+    NocActionRefused noc_action_refused = 101;
   }
 }
 
@@ -600,6 +604,8 @@ message InitialState {
   repeated NpcDirectoryEntry npc_directory = 27;
   // Local player's level/XP/mana (NOCTHEMAR).
   NocSnapshot noc = 28;
+  // Classes and skills of the game; present on the first join of a session only.
+  NocCatalog noc_catalog = 29;
 }
 
 message ItemAddedToBag {
