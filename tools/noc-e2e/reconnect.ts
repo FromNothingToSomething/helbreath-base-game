@@ -8,6 +8,11 @@
  * (class 3 has none ready at slot 0 and learns nothing), and a second class choice must be refused. classId, skillPoints and the learned skills are part of the
  * compared state, so they must also survive the reconnect and the server restart.
  *
+ * T71 extends it to the mimicry (module 4): each client gets the essences of one open-to-its-class ability and of a fusion pair through the debug item request
+ * (capture itself, a monster kill and a pickup, has no bot equivalent and is covered by the server tests), summons a Soul Forge next to itself, consumes the first essence,
+ * fuses the other two, equips the learned ability (a second equip must be refused: one slot below level 11) and, for classes 0 and 4 (Iron Skin, a self buff), casts it once.
+ * The learned abilities, their experience, the bar and the slot count are part of the compared state: they must survive the reconnect and the server restart.
+ *
  * Usage (from tools/):
  *   node --import tsx ./noc-e2e/reconnect.ts --mode grant  --state state.json [--clients 20] [--ip 127.0.0.1] [--port 1337]
  *   node --import tsx ./noc-e2e/reconnect.ts --mode verify --state state.json [--ip ...] [--port ...]
@@ -30,6 +35,7 @@ interface Snap {
     level: number; xp: string; xpToNext: string; mana: number; maxMana: number;
     raceId: number; maxHp: number; gender: number; skinColor: number; hairStyleIndex: number; underwearColorIndex: number;
     classId: number | null; skillPoints: number; skills: number[];
+    mimics: { id: number; xp: string; level: number }[]; mimicEquipped: number[]; mimicSlots: number;
 }
 interface Creation { raceId: number; gender: number; skinColor: number; hairStyleIndex: number; underwearColorIndex: number }
 interface SavedClient { id: string; name: string; amount: string; race: number; creation: Creation; state: Snap }
@@ -38,6 +44,16 @@ const RACE_COUNT = 6;
 const CLASS_COUNT = 5;
 // First ready skill of each class at level 1 (Skills.json): knight 1000, singer 1100, shapeshifter 1200, class 3 none, forgemaster 1410.
 const FIRST_SKILL: (number | null)[] = [1000, 1100, 1200, null, 1410];
+// Mimicry (Mimic.json): 2001 Morsure infectée (open, not castable yet), 2003 Peau de fer (classes 0 and 4, buff handler), 2005 + 2008 fuse into 2102 Bête Immortelle.
+// A mimicry ability's essence is the Items.json item 5000 + (id - 2000); the Soul Forge is NPC 10 and works within 3 cells.
+const FORGE_NPC = 10;
+const essenceItem = (abilityId: number) => 5000 + (abilityId - 2000);
+const castableClass = (cls: number) => cls === 0 || cls === 4;
+const consumeFor = (cls: number) => (castableClass(cls) ? 2003 : 2001);
+const FUSE_A = 2005;
+const FUSE_B = 2008;
+const FUSED = 2102;
+const NO_FORGE = 'No Soul Forge in range.';
 // Every shipped race allows the whole appearance domain, so these always pass the server's validation; each client gets its own mix.
 const creationFor = (index: number, raceId: number): Creation => ({
     raceId,
@@ -61,6 +77,7 @@ const toSnap = (s: NocSnapshot, look: Look): Snap => ({
     raceId: s.raceId, maxHp: look.maxHp, gender: look.gender, skinColor: look.skinColor,
     hairStyleIndex: look.hairStyleIndex, underwearColorIndex: look.underwearColorIndex,
     classId: s.classId ?? null, skillPoints: s.skillPoints, skills: [...s.skills],
+    mimics: s.mimics.map((m) => ({ id: m.id, xp: m.xp.toString(), level: m.level })), mimicEquipped: [...s.mimicEquipped], mimicSlots: s.mimicSlots,
 });
 const same = (a: Snap, b: Snap) => JSON.stringify(a) === JSON.stringify(b);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -76,6 +93,9 @@ class Bot {
     private look: Look | undefined;
     updates = 0;
     refusals: string[] = [];
+    bagAdds = 0;
+    castFailures = 0;
+    castSpeedMs = 600;
 
     constructor(readonly id: string, readonly name: string) {}
 
@@ -85,6 +105,8 @@ class Bot {
         this.look = undefined;
         this.updates = 0;
         this.refusals = [];
+        this.bagAdds = 0;
+        this.castFailures = 0;
         const done = new Promise<void>((res, rej) => { this.ready = res; this.failed = rej; });
         this.ws = new WebSocket(`ws://${ip}:${port}/ws`);
         this.ws.binaryType = 'arraybuffer';
@@ -96,6 +118,7 @@ class Bot {
             const m = ServerMessage.decode(new Uint8Array(ev.data as ArrayBuffer));
             switch (m.payload?.$case) {
                 case 'initialState':
+                    this.castSpeedMs = m.payload.value.castSpeedMs;
                     this.look = {
                         maxHp: m.payload.value.maxHp, gender: m.payload.value.gender, skinColor: m.payload.value.skinColor,
                         hairStyleIndex: m.payload.value.hairStyleIndex, underwearColorIndex: m.payload.value.underwearColorIndex,
@@ -110,6 +133,12 @@ class Bot {
                     break;
                 case 'nocActionRefused':
                     this.refusals.push(m.payload.value.reason);
+                    break;
+                case 'itemAddedToBag':
+                    this.bagAdds++;
+                    break;
+                case 'spellCastFailed':
+                    this.castFailures++;
                     break;
                 case 'initialGameWorldState':
                     clearTimeout(timeout);
@@ -137,6 +166,27 @@ class Bot {
         this.send({ payload: { $case: 'nocLearnSkillRequest', value: { skillId } } });
     }
 
+    /** Debug only (nocthemar.debug): puts `quantity` of an item in the bag. */
+    createItem(itemId: number, quantity: number): void {
+        this.send({ payload: { $case: 'nocCreateItemRequest', value: { itemId, quantity } } });
+    }
+
+    summonNpc(catalogNpcId: number): void {
+        this.send({ payload: { $case: 'summonNpcRequest', value: { catalogNpcId, direction: 0 } } });
+    }
+
+    forgeConsume(abilityId: number): void {
+        this.send({ payload: { $case: 'nocForgeConsumeRequest', value: { abilityId } } });
+    }
+
+    forgeFuse(abilityA: number, abilityB: number): void {
+        this.send({ payload: { $case: 'nocForgeFuseRequest', value: { abilityA, abilityB } } });
+    }
+
+    equip(abilityId: number, equipped: boolean): void {
+        this.send({ payload: { $case: 'nocMimicEquipRequest', value: { abilityId, equipped } } });
+    }
+
     async close(): Promise<void> {
         clearInterval(this.ping);
         const ws = this.ws;
@@ -151,6 +201,61 @@ async function waitFor(cond: () => boolean, ms: number, what: string): Promise<v
         if (Date.now() > end) throw new Error(`timeout: ${what}`);
         await sleep(25);
     }
+}
+
+/**
+ * Sends a Soul Forge request until `done` holds. The summoned forge appears on a later world tick, so "No Soul Forge in range." and silence are retried;
+ * any other refusal ends the attempt with an error.
+ */
+async function viaForge(bot: Bot, send: () => void, done: () => boolean, what: string): Promise<void> {
+    for (let attempt = 0; attempt < 8; attempt++) {
+        bot.refusals = [];
+        send();
+        const end = Date.now() + 700;
+        while (Date.now() < end && !done()) await sleep(25);
+        if (done()) return;
+        if (bot.refusals.some((r) => r !== NO_FORGE)) throw new Error(`${bot.name}: ${what} refused (${bot.refusals.join('; ')})`);
+        await sleep(300);
+    }
+    throw new Error(`${bot.name}: ${what}: no effect after 8 attempts (Soul Forge never in range?)`);
+}
+
+const learned = (bot: Bot, abilityId: number) => bot.last?.mimics.some((m) => m.id === abilityId) === true;
+const abilityXp = (bot: Bot, abilityId: number) => bot.last?.mimics.find((m) => m.id === abilityId)?.xp ?? '0';
+
+/** Essences, Soul Forge, fusion, bar and (classes 0 and 4) one cast; returns the cast experience the ability must have. */
+async function mimicry(bot: Bot, cls: number): Promise<{ learnedIds: number[]; castXp: string }> {
+    const consumeId = consumeFor(cls);
+    bot.createItem(essenceItem(consumeId), 1);
+    bot.createItem(essenceItem(FUSE_A), 1);
+    bot.createItem(essenceItem(FUSE_B), 1);
+    await waitFor(() => bot.bagAdds >= 3, 5000, `${bot.name}: the three essences were not added to the bag (is nocthemar.debug true?)`);
+
+    bot.summonNpc(FORGE_NPC);
+    await sleep(300);
+    await viaForge(bot, () => bot.forgeConsume(consumeId), () => learned(bot, consumeId), `consume ${consumeId}`);
+    await viaForge(bot, () => bot.forgeFuse(FUSE_A, FUSE_B), () => learned(bot, FUSED), `fuse ${FUSE_A}+${FUSE_B}`);
+
+    // One slot below level 11, so the second equip must be refused (the bar is changed without a forge).
+    bot.refusals = [];
+    bot.equip(consumeId, true);
+    await waitFor(() => bot.last?.mimicEquipped.includes(consumeId) === true, 5000, `${bot.name}: ability ${consumeId} not equipped (${bot.refusals.join('; ')})`);
+    bot.equip(FUSED, true);
+    await waitFor(() => bot.refusals.length > 0, 5000, `${bot.name}: the second equip was not refused`);
+    if (bot.last!.mimicSlots === 1 && bot.last!.mimicEquipped.length !== 1) throw new Error(`${bot.name}: bar ${JSON.stringify(bot.last!.mimicEquipped)} with 1 slot`);
+
+    let castXp = '0';
+    if (castableClass(cls)) {
+        bot.refusals = [];
+        bot.send({ payload: { $case: 'spellCastStartRequest', value: { spellId: consumeId } } });
+        await sleep(bot.castSpeedMs + 300); // the server refuses a cast that comes before the cast bar is over
+        bot.send({ payload: { $case: 'spellCastRequest', value: { x: 0, y: 0 } } });
+        await waitFor(() => abilityXp(bot, consumeId) !== '0' || bot.castFailures > 0, 5000, `${bot.name}: no experience after casting ${consumeId}`);
+        if (bot.castFailures > 0) throw new Error(`${bot.name}: cast of ${consumeId} failed (${bot.refusals.join('; ')})`);
+        castXp = abilityXp(bot, consumeId);
+        if (castXp !== '1') throw new Error(`${bot.name}: ability ${consumeId} has ${castXp} xp after one cast, expected 1`);
+    }
+    return { learnedIds: [consumeId, FUSED].sort((a, b) => a - b), castXp };
 }
 
 let failures = 0;
@@ -231,8 +336,14 @@ async function grant(): Promise<void> {
         }
         bot.chooseClass((cls + 1) % CLASS_COUNT); // the class is final: refused, state unchanged
         await waitFor(() => bot.refusals.length > 0, 5000, `${bot.name}: second class choice was not refused`);
+
+        const mimic = await mimicry(bot, cls);
         await sleep(700);
         const s1 = bot.last!;
+        if (JSON.stringify(s1.mimics.map((m) => m.id)) !== JSON.stringify(mimic.learnedIds) || s1.mimicEquipped[0] !== consumeFor(cls) || s1.mimicEquipped.length !== 1) {
+            throw new Error(`${bot.name}: unexpected mimicry state ${JSON.stringify({ mimics: s1.mimics, equipped: s1.mimicEquipped })}, expected abilities ${mimic.learnedIds} and ${consumeFor(cls)} equipped`);
+        }
+        if (abilityXp(bot, consumeFor(cls)) !== mimic.castXp) throw new Error(`${bot.name}: cast experience changed after the cast`);
         const expectedPoints = s1.level - 1 - (skill === null ? 0 : 1); // 1 point per level from level 2, 1 spent
         if (s1.classId !== cls || s1.skillPoints !== expectedPoints || JSON.stringify(s1.skills) !== JSON.stringify(skill === null ? [] : [skill])) {
             throw new Error(`${bot.name}: unexpected class state ${JSON.stringify({ classId: s1.classId, skillPoints: s1.skillPoints, skills: s1.skills })}, expected class ${cls} points ${expectedPoints} skill ${skill}`);
