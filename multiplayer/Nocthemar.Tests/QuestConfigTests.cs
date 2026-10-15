@@ -9,10 +9,10 @@ public class QuestConfigTests {
         $$"""{"schemaVersion":1,"rules":{{rules}},"quests":[{{quests}}]}""";
 
     private static string Kill(int id = 0, int faction = 0, string tier = "Neutral", int monster = 51, int count = 10, string rewards = """{"xp":100,"rep":50,"items":[]}""", string key = "")
-        => $$"""{"id":{{id}},"key":"{{(key == "" ? "q" + id : key)}}","name":"Q{{id}}","factionId":{{faction}},"minTier":"{{tier}}","kind":"kill","monsterId":{{monster}},"count":{{count}},"rewards":{{rewards}}}""";
+        => $$"""{"id":{{id}},"key":"{{(key == "" ? "q" + id : key)}}","name":"Q{{id}}","factionId":{{faction}},"minTier":"{{tier}}","kind":"kill","monsterId":{{monster}},"count":{{count}},"rewards":{{rewards}} }""";
 
     private static string Deliver(int id = 0, int faction = 0, string tier = "Neutral", int item = 36, int count = 3, string rewards = """{"xp":100,"rep":50,"items":[]}""")
-        => $$"""{"id":{{id}},"key":"d{{id}}","name":"D{{id}}","factionId":{{faction}},"minTier":"{{tier}}","kind":"deliver","itemId":{{item}},"count":{{count}},"rewards":{{rewards}}}""";
+        => $$"""{"id":{{id}},"key":"d{{id}}","name":"D{{id}}","factionId":{{faction}},"minTier":"{{tier}}","kind":"deliver","itemId":{{item}},"count":{{count}},"rewards":{{rewards}} }""";
 
     private static void Rejects(string json, string expected) {
         var ex = Assert.Throws<InvalidOperationException>(() => QuestConfig.Parse(json, TestSupport.ShippedFactions()));

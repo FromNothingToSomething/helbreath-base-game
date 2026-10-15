@@ -16,12 +16,14 @@ public class QuestServiceTests {
         new(NocState.CurrentV, level, 0, 0, RaceId: 0, FactionId: faction, Reputations: rep, Quests: quests, QuestsDone: done);
 
     private static QuestService Small(int maxActive) {
-        var json = $$"""
-            {"schemaVersion":1,"rules":{"maxActive":{{maxActive}},"bagSlots":40},"quests":[
+        // Not an interpolated raw string: its content has "}}" runs, which would close a hole.
+        const string template = """
+            {"schemaVersion":1,"rules":{"maxActive":MAX,"bagSlots":40},"quests":[
             {"id":0,"key":"a","name":"A","factionId":0,"minTier":"Neutral","kind":"kill","monsterId":51,"count":2,"rewards":{"xp":1}},
             {"id":1,"key":"b","name":"B","factionId":0,"minTier":"Neutral","kind":"kill","monsterId":61,"count":2,"rewards":{"xp":1}},
             {"id":2,"key":"c","name":"C","factionId":0,"minTier":"Neutral","kind":"kill","monsterId":52,"count":2,"rewards":{"xp":1}}]}
             """;
+        var json = template.Replace("MAX", maxActive.ToString());
         return new QuestService(QuestConfig.Parse(json, TestSupport.ShippedFactions()), new ReputationService(TestSupport.ShippedFactions()));
     }
 
