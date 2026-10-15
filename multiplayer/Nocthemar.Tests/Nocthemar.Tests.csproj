@@ -28,6 +28,7 @@
     <None Include="../server/Config/Nocthemar/Skills.json" Link="Config/Nocthemar/Skills.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../server/Config/Nocthemar/Mimic.json" Link="Config/Nocthemar/Mimic.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../server/Config/Nocthemar/Factions.json" Link="Config/Nocthemar/Factions.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../server/Config/Nocthemar/Quests.json" Link="Config/Nocthemar/Quests.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../server/Config/Items.json" Link="Config/Items.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../server/Config/Monsters.json" Link="Config/Monsters.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../server/Config/Spells.json" Link="Config/Spells.json" CopyToOutputDirectory="PreserveNewest" />

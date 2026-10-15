@@ -43,6 +43,7 @@ var classSkills = await SkillConfig.LoadAsync(classes);
 classes.ValidateRaces(races);
 var mimicConfig = await MimicConfig.LoadAsync(classes);
 var factionConfig = await FactionConfig.LoadAsync();
+var questConfig = await QuestConfig.LoadAsync(factionConfig);
 // Skill handlers are registered here; NocContent fails fast when a ready skill names a handler that is not.
 var nocContent = new NocContent(classes, classSkills, progression, BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), mimicConfig, BuiltinMimicHandlers.Register(new MimicHandlerRegistry()), factionConfig);
 var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");
@@ -68,6 +69,8 @@ var itemsById = Config.BuildItemCatalog(itemsConfig);
 mimicConfig.ValidateMonsters(monstersById.ToDictionary(pair => pair.Key, pair => pair.Value.Name));
 mimicConfig.ValidateEssenceItems(itemsById.Keys.ToArray());
 mimicConfig.ValidateSpells(spellsById.Keys.ToArray());
+questConfig.ValidateMonsters(monstersById.ToDictionary(pair => pair.Key, pair => pair.Value.FactionId));
+questConfig.ValidateItems(itemsById.Keys.ToArray());
 var npcsConfig = await Config.LoadNpcsConfig();
 var npcsById = Config.BuildNpcCatalog(npcsConfig);
 var mapsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Config", "maps");

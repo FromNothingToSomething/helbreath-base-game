@@ -24,6 +24,25 @@ internal static class TestSupport {
     /// <summary>The shipped Config/Nocthemar/Factions.json (linked into the test output).</summary>
     public static FactionConfig ShippedFactions() => FactionConfig.LoadAsync(Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Factions.json")).GetAwaiter().GetResult();
 
+    /// <summary>The shipped Config/Nocthemar/Quests.json validated against the shipped factions, monsters and items.</summary>
+    public static QuestConfig ShippedQuests() {
+        var quests = QuestConfig.LoadAsync(ShippedFactions(), Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Quests.json")).GetAwaiter().GetResult();
+        quests.ValidateMonsters(ShippedMonsterFactions());
+        quests.ValidateItems(ShippedItems().Keys.ToArray());
+        return quests;
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>The shipped Config/Items.json as a catalog.</summary>
+    public static IReadOnlyDictionary<int, ItemConfig> ShippedItems() =>
+        Config.BuildItemCatalog(System.Text.Json.JsonSerializer.Deserialize<ItemConfig[]>(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Config", "Items.json")), JsonOptions)!);
+
+    /// <summary>The shipped Config/Monsters.json as monster id -> faction id.</summary>
+    public static Dictionary<int, int?> ShippedMonsterFactions() =>
+        System.Text.Json.JsonSerializer.Deserialize<MonsterConfig[]>(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Config", "Monsters.json")), JsonOptions)!
+            .ToDictionary(m => m.Id, m => m.FactionId);
+
     /// <summary>The shipped classes and skills with the given handlers (none by default: every shipped skill is a catalog entry or a stat passive).</summary>
     public static NocContent ShippedContent(SkillHandlerRegistry? handlers = null) =>
         new(ShippedClasses(), ShippedSkills(), Progression(), handlers ?? BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), ShippedMimic(), BuiltinMimicHandlers.Register(new MimicHandlerRegistry()), ShippedFactions());

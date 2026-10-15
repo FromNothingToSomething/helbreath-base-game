@@ -1,0 +1,277 @@
+{
+  "schemaVersion": 1,
+  "rules": {
+    "maxActive": 5,
+    "bagSlots": 40
+  },
+  "quests": [
+    {
+      "id": 0,
+      "key": "chant_squelettes",
+      "name": "Faire taire les os",
+      "factionId": 0,
+      "minTier": "Neutral",
+      "kind": "kill",
+      "monsterId": 51,
+      "count": 10,
+      "rewards": {
+        "xp": 200,
+        "rep": 100,
+        "items": [
+          {
+            "itemId": 36,
+            "qty": 5
+          }
+        ]
+      },
+      "desc": "Dix squelettes du Chœur Abyssal hantent les routes."
+    },
+    {
+      "id": 1,
+      "key": "chant_fioles",
+      "name": "Fioles pour la forge",
+      "factionId": 0,
+      "minTier": "Friendly",
+      "kind": "deliver",
+      "itemId": 5100,
+      "count": 3,
+      "rewards": {
+        "xp": 400,
+        "rep": 150,
+        "items": [
+          {
+            "itemId": 35,
+            "qty": 50
+          }
+        ]
+      },
+      "desc": "Rapportez trois Fioles d'Essence au Maître."
+    },
+    {
+      "id": 2,
+      "key": "chant_sorcières",
+      "name": "La fin des sorcières",
+      "factionId": 0,
+      "minTier": "Honored",
+      "kind": "kill",
+      "monsterId": 52,
+      "count": 5,
+      "rewards": {
+        "xp": 800,
+        "rep": 250,
+        "items": [
+          {
+            "itemId": 35,
+            "qty": 100
+          },
+          {
+            "itemId": 36,
+            "qty": 10
+          }
+        ]
+      },
+      "desc": "Cinq sorcières du Chœur doivent tomber."
+    },
+    {
+      "id": 3,
+      "key": "choeur_gardes",
+      "name": "Briser la garde",
+      "factionId": 1,
+      "minTier": "Neutral",
+      "kind": "kill",
+      "monsterId": 31,
+      "count": 10,
+      "rewards": {
+        "xp": 200,
+        "rep": 100,
+        "items": [
+          {
+            "itemId": 36,
+            "qty": 5
+          }
+        ]
+      },
+      "desc": "Dix gardes de l'Ordre du Chant de Fer barrent la voie."
+    },
+    {
+      "id": 4,
+      "key": "choeur_potions",
+      "name": "Soins pour les fidèles",
+      "factionId": 1,
+      "minTier": "Friendly",
+      "kind": "deliver",
+      "itemId": 36,
+      "count": 10,
+      "rewards": {
+        "xp": 400,
+        "rep": 150,
+        "items": [
+          {
+            "itemId": 35,
+            "qty": 50
+          }
+        ]
+      },
+      "desc": "Dix Potions Rouges pour les blessés du Chœur."
+    },
+    {
+      "id": 5,
+      "key": "choeur_templiers",
+      "name": "Chevaliers du temple",
+      "factionId": 1,
+      "minTier": "Honored",
+      "kind": "kill",
+      "monsterId": 56,
+      "count": 5,
+      "rewards": {
+        "xp": 800,
+        "rep": 250,
+        "items": [
+          {
+            "itemId": 35,
+            "qty": 100
+          },
+          {
+            "itemId": 5100,
+            "qty": 2
+          }
+        ]
+      },
+      "desc": "Cinq chevaliers du temple à abattre."
+    },
+    {
+      "id": 6,
+      "key": "meutes_golems",
+      "name": "Briser l'acier",
+      "factionId": 2,
+      "minTier": "Neutral",
+      "kind": "kill",
+      "monsterId": 8,
+      "count": 10,
+      "rewards": {
+        "xp": 200,
+        "rep": 100,
+        "items": [
+          {
+            "itemId": 36,
+            "qty": 5
+          }
+        ]
+      },
+      "desc": "Dix golems de bataille des Forgeurs."
+    },
+    {
+      "id": 7,
+      "key": "meutes_potions",
+      "name": "Remèdes pour la meute",
+      "factionId": 2,
+      "minTier": "Friendly",
+      "kind": "deliver",
+      "itemId": 36,
+      "count": 10,
+      "rewards": {
+        "xp": 400,
+        "rep": 150,
+        "items": [
+          {
+            "itemId": 35,
+            "qty": 50
+          }
+        ]
+      },
+      "desc": "Dix Potions Rouges pour la meute."
+    },
+    {
+      "id": 8,
+      "key": "meutes_pierre",
+      "name": "Cœurs de pierre",
+      "factionId": 2,
+      "minTier": "Honored",
+      "kind": "kill",
+      "monsterId": 28,
+      "count": 5,
+      "rewards": {
+        "xp": 800,
+        "rep": 250,
+        "items": [
+          {
+            "itemId": 35,
+            "qty": 100
+          },
+          {
+            "itemId": 5100,
+            "qty": 2
+          }
+        ]
+      },
+      "desc": "Cinq golems de pierre des Forgeurs."
+    },
+    {
+      "id": 9,
+      "key": "forgeurs_loups",
+      "name": "Chasse aux loups",
+      "factionId": 3,
+      "minTier": "Neutral",
+      "kind": "kill",
+      "monsterId": 60,
+      "count": 10,
+      "rewards": {
+        "xp": 200,
+        "rep": 100,
+        "items": [
+          {
+            "itemId": 36,
+            "qty": 5
+          }
+        ]
+      },
+      "desc": "Dix loups-garous des Meutes Libres."
+    },
+    {
+      "id": 10,
+      "key": "forgeurs_fioles",
+      "name": "Essence pour l'enclume",
+      "factionId": 3,
+      "minTier": "Friendly",
+      "kind": "deliver",
+      "itemId": 5100,
+      "count": 5,
+      "rewards": {
+        "xp": 400,
+        "rep": 150,
+        "items": [
+          {
+            "itemId": 35,
+            "qty": 50
+          }
+        ]
+      },
+      "desc": "Cinq Fioles d'Essence pour la forge."
+    },
+    {
+      "id": 11,
+      "key": "forgeurs_arbres",
+      "name": "Abattre les géants",
+      "factionId": 3,
+      "minTier": "Honored",
+      "kind": "kill",
+      "monsterId": 27,
+      "count": 5,
+      "rewards": {
+        "xp": 800,
+        "rep": 250,
+        "items": [
+          {
+            "itemId": 35,
+            "qty": 100
+          },
+          {
+            "itemId": 36,
+            "qty": 10
+          }
+        ]
+      },
+      "desc": "Cinq arbres géants des Meutes."
+    }
+  ]
+}
