@@ -1758,5 +1758,137 @@
     "id": 328,
     "name": "Crafting Vessel",
     "itemType": "misc"
+  },
+  {
+    "id": 5000,
+    "name": "Essence: Nuée",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5001,
+    "name": "Essence: Morsure infectée",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5002,
+    "name": "Essence: Traversée",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5003,
+    "name": "Essence: Peau de fer",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5004,
+    "name": "Essence: Brasier",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5005,
+    "name": "Essence: Frénésie",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5006,
+    "name": "Essence: Toile",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5007,
+    "name": "Essence: Racines",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5008,
+    "name": "Essence: Putréfaction",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5009,
+    "name": "Essence: Malédiction",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5010,
+    "name": "Essence: Trois têtes",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5011,
+    "name": "Essence: Souffle glacial",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5012,
+    "name": "Essence: Blizzard",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5013,
+    "name": "Essence: Cri mortel",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5014,
+    "name": "Essence: Lame céleste",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5015,
+    "name": "Essence: Bouclier noir",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5016,
+    "name": "Essence: Pluie de feu",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5017,
+    "name": "Essence: Dard",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5018,
+    "name": "Essence: Éruption",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5019,
+    "name": "Essence: Folie",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5020,
+    "name": "Essence: Jugement",
+    "itemType": "misc",
+    "stackable": true
+  },
+  {
+    "id": 5021,
+    "name": "Essence: Chant de la fin",
+    "itemType": "misc",
+    "stackable": true
   }
 ]
