@@ -136,6 +136,9 @@ public sealed class FactionDefinition {
     /// <summary>Owner of the faction's modifiers: one call to <c>StatPipeline.RemoveSource</c> clears them all.</summary>
     public int SourceId => ModifierSources.Faction(Id);
 
+    /// <summary>The perks granted by <paramref name="tier"/> alone (none below Friendly).</summary>
+    public StatModifier[] PerksOf(ReputationTier tier) => (int)tier < perksByTier.Length ? [.. perksByTier[(int)tier]] : [];
+
     /// <summary>The perks a member has at <paramref name="tier"/>: those of every tier up to and including it (Friendly, then Honored, then Exalted).</summary>
     public StatModifier[] ModifiersAt(ReputationTier tier) {
         var all = new List<StatModifier>();

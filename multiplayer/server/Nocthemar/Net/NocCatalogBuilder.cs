@@ -6,7 +6,7 @@ namespace Server.Nocthemar.Net;
 
 /// <summary>Builds the wire form of the class and skill catalogs (<see cref="NocCatalog"/>), sent once per session in <c>InitialState</c>.</summary>
 public static class NocCatalogBuilder {
-    public static NocCatalog Build(ClassConfig classes, SkillConfig skills, SkillService rules, MimicConfig? mimic = null) {
+    public static NocCatalog Build(ClassConfig classes, SkillConfig skills, SkillService rules, MimicConfig? mimic = null, FactionConfig? factions = null) {
         ArgumentNullException.ThrowIfNull(classes);
         ArgumentNullException.ThrowIfNull(skills);
         ArgumentNullException.ThrowIfNull(rules);
@@ -42,7 +42,42 @@ public static class NocCatalogBuilder {
             AddMimicry(catalog, mimic);
         }
 
+        if (factions is not null) {
+            AddFactions(catalog, factions);
+        }
+
         return catalog;
+    }
+
+    private static void AddFactions(NocCatalog catalog, FactionConfig factions) {
+        var rules = factions.Rules;
+        catalog.ReputationRules = new NocReputationRules {
+            Min = rules.Min,
+            Max = rules.Max,
+            JoinLevel = rules.JoinLevel,
+            KillBase = rules.KillBase,
+            Neutral = rules.Neutral,
+            Friendly = rules.Friendly,
+            Honored = rules.Honored,
+            Exalted = rules.Exalted,
+        };
+        foreach (var faction in factions.Factions) {
+            var info = new NocFactionInfo { Id = faction.Id, Key = faction.Key, Name = faction.Name, Hq = faction.Hq, Symbol = faction.Symbol, Desc = faction.Desc };
+            info.Colors.AddRange(faction.Colors);
+            info.Rivals.AddRange(faction.Rivals);
+            foreach (var tier in new[] { ReputationTier.Friendly, ReputationTier.Honored, ReputationTier.Exalted }) {
+                var perk = new NocFactionPerk { Tier = (int)tier };
+                foreach (var modifier in faction.PerksOf(tier)) {
+                    perk.Modifiers.Add(new NocPerkModifier { Stat = (int)modifier.Stat, Kind = (int)modifier.Kind, Value = modifier.Value });
+                }
+
+                if (perk.Modifiers.Count > 0) {
+                    info.Perks.Add(perk);
+                }
+            }
+
+            catalog.Factions.Add(info);
+        }
     }
 
     private static void AddMimicry(NocCatalog catalog, MimicConfig mimic) {

@@ -104,6 +104,9 @@ message ClientMessage {
     NocForgeConsumeRequest noc_forge_consume_request = 105;
     NocForgeFuseRequest noc_forge_fuse_request = 106;
     NocMimicEquipRequest noc_mimic_equip_request = 107;
+    NocFactionJoinRequest noc_faction_join_request = 108;
+    // 109-111 are reserved for the quest requests (T84).
+    NocReputationAddRequest noc_reputation_add_request = 112;
   }
 }
 
@@ -458,6 +461,7 @@ message ServerMessage {
     // NOCTHEMAR messages start at 100 (see nocthemar.proto).
     NocStateUpdated noc_state_updated = 100;
     NocActionRefused noc_action_refused = 101;
+    PlayerFactionChanged player_faction_changed = 102;
   }
 }
 
@@ -917,6 +921,14 @@ message PlayerEnteredRange {
   optional int32 cast_speed_ms = 18;
   // Race of this player (Races.json); 0 = default race, which is also what an absent field decodes to.
   int32 race_id = 19;
+  // Faction of this player (Factions.json id); absent when none.
+  optional int32 faction_id = 20;
+}
+
+// Observers only: another player joined a faction (sent to the players in range, never to the player concerned, who gets NocStateUpdated).
+message PlayerFactionChanged {
+  int64 player_id = 1;
+  optional int32 faction_id = 2;
 }
 
 message MonsterInRange {

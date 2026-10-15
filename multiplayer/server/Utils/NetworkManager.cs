@@ -312,6 +312,10 @@ public static class NetworkManager {
         snapshot.UnderwearColorIndex = p.UnderwearColorIndex;
         snapshot.CharacterName = p.CharacterName;
         snapshot.RaceId = p.RaceId;
+        if (p.FactionId is int factionId) {
+            snapshot.FactionId = factionId;
+        }
+
         snapshot.AttackSpeedMs = p.AttackSpeedMs;
         snapshot.CastSpeedMs = p.CastSpeedMs;
         p.FillActiveTemporaryEffects(snapshot);
@@ -363,6 +367,16 @@ public static class NetworkManager {
         return new ServerMessage {
             TemporaryEffectExpired = expired,
         };
+    }
+
+    /// <summary>Observers only: another player joined a faction.</summary>
+    public static ServerMessage CreatePlayerFactionChanged(long playerId, int? factionId) {
+        var changed = new PlayerFactionChanged { PlayerId = playerId };
+        if (factionId.HasValue) {
+            changed.FactionId = factionId.Value;
+        }
+
+        return new ServerMessage { PlayerFactionChanged = changed };
     }
 
     /// <summary>Observers only: another player’s gender/skin/hair/underwear changed.</summary>
@@ -1099,7 +1113,8 @@ public static class NetworkManager {
     public static NocSnapshot CreateNocSnapshot(
         int level, long xp, long xpToNext, int mana, int maxMana, int raceId = 0,
         int? classId = null, int skillPoints = 0, IReadOnlyList<int>? skills = null,
-        IReadOnlyList<NocMimicState>? mimics = null, IReadOnlyList<int>? mimicEquipped = null, int mimicSlots = 0) {
+        IReadOnlyList<NocMimicState>? mimics = null, IReadOnlyList<int>? mimicEquipped = null, int mimicSlots = 0,
+        int? factionId = null, IReadOnlyList<NocReputation>? reputations = null) {
         var snapshot = new NocSnapshot {
             Level = level,
             Xp = xp,
@@ -1126,6 +1141,13 @@ public static class NetworkManager {
         }
 
         snapshot.MimicSlots = mimicSlots;
+        if (factionId.HasValue) {
+            snapshot.FactionId = factionId.Value;
+        }
+
+        if (reputations is not null) {
+            snapshot.Reputations.AddRange(reputations);
+        }
 
         return snapshot;
     }

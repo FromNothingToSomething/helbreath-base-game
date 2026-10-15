@@ -29,6 +29,17 @@ message NocSnapshot {
   repeated int32 mimic_equipped = 11;
   // Mimicry bar slots available now (level and passives); 0 when the world has no mimicry.
   int32 mimic_slots = 12;
+  // Faction the character joined (Factions.json id); absent until one is joined.
+  optional int32 faction_id = 13;
+  // Reputation with each faction that moved away from 0, ascending by faction id; empty when none.
+  repeated NocReputation reputations = 14;
+  // 15 and 16 are reserved for the quest log (T84).
+}
+
+message NocReputation {
+  int32 faction_id = 1;
+  // -10000..10000.
+  int32 value = 2;
 }
 
 // One learned mimicry ability.
@@ -94,6 +105,17 @@ message NocForgeFuseRequest {
 message NocMimicEquipRequest {
   int32 ability_id = 1;
   bool equipped = 2;
+}
+
+// Join a faction at one of its masters (an NPC of that faction within range). Refused when the sender is dead, already has a faction, is under the join level or no master is in range. Accepted: the next NocStateUpdated carries the faction, nearby players receive PlayerFactionChanged.
+message NocFactionJoinRequest {
+  int32 faction_id = 1;
+}
+
+// Debug only (nocthemar.debug): adds `delta` (may be negative) to the sender's reputation with a faction.
+message NocReputationAddRequest {
+  int32 faction_id = 1;
+  int32 delta = 2;
 }
 
 // Sent to the sender only when a NOCTHEMAR request is refused; `reason` is a short English sentence meant to be shown to the player.
@@ -188,6 +210,52 @@ message NocCatalog {
   int32 mimic_slots_first = 7;
   int32 mimic_levels_per_slot = 8;
   int32 mimic_slots_max = 9;
+  // Empty when the world has no faction catalog.
+  repeated NocFactionInfo factions = 10;
+  NocReputationRules reputation_rules = 11;
+  // 12 is reserved for the quest catalog (T84).
+}
+
+message NocFactionInfo {
+  int32 id = 1;
+  string key = 2;
+  string name = 3;
+  string hq = 4;
+  string symbol = 5;
+  // CSS colors (#rrggbb); the first one is the faction's display color.
+  repeated string colors = 6;
+  repeated int32 rivals = 7;
+  string desc = 8;
+  // Perks gained at each tier (only that tier's; a member cumulates the lower ones).
+  repeated NocFactionPerk perks = 9;
+}
+
+message NocFactionPerk {
+  // ReputationTier: 0 hostile, 1 neutral, 2 friendly, 3 honored, 4 exalted.
+  int32 tier = 1;
+  repeated NocPerkModifier modifiers = 2;
+}
+
+message NocPerkModifier {
+  // StatId.
+  int32 stat = 1;
+  // ModifierKind: 0 flat, 1 percent add, 2 percent mult.
+  int32 kind = 2;
+  double value = 3;
+}
+
+message NocReputationRules {
+  int32 min = 1;
+  int32 max = 2;
+  // Minimum character level to join a faction.
+  int32 join_level = 3;
+  // Reputation base of a monster kill (a monster's repOnKill replaces it).
+  int32 kill_base = 4;
+  // Lowest value of each tier above hostile.
+  int32 neutral = 5;
+  int32 friendly = 6;
+  int32 honored = 7;
+  int32 exalted = 8;
 }
 
 // Self only. At most one per world tick and player (other state messages such as HpUpdated may accompany it); the state is the latest one at the end of that tick (last state wins).

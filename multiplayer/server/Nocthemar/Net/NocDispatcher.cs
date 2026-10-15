@@ -14,16 +14,27 @@ public sealed class NocDispatcher {
     private readonly bool debugEnabled;
     private readonly Action<string> log;
     private readonly Func<GameWorldPlayer, bool> soulForgeInRange;
+    private readonly Func<GameWorldPlayer, int, bool> factionMasterInRange;
+    private readonly Action<GameWorldPlayer> factionChanged;
     private readonly HashSet<(long PlayerId, string Request)> playersAlreadyRefused = new();
 
     /// <summary>Largest quantity one debug item request may create.</summary>
     public const int MaxDebugQuantity = 100;
 
     /// <param name="soulForgeInRange">Tells whether a Soul Forge NPC of the player's world is within <see cref="SoulForge.RangeCells"/> of the player; none given = there is no forge, consume and fuse requests are refused.</param>
-    public NocDispatcher(bool debugEnabled, Action<string>? log = null, Func<GameWorldPlayer, bool>? soulForgeInRange = null) {
+    /// <param name="factionMasterInRange">Tells whether a master of the given faction stands within range of the player; none given = no master, join requests are refused.</param>
+    /// <param name="factionChanged">Called after a player joined a faction (the world tells the players in range).</param>
+    public NocDispatcher(
+        bool debugEnabled,
+        Action<string>? log = null,
+        Func<GameWorldPlayer, bool>? soulForgeInRange = null,
+        Func<GameWorldPlayer, int, bool>? factionMasterInRange = null,
+        Action<GameWorldPlayer>? factionChanged = null) {
         this.debugEnabled = debugEnabled;
         this.log = log ?? Console.Error.WriteLine;
         this.soulForgeInRange = soulForgeInRange ?? (_ => false);
+        this.factionMasterInRange = factionMasterInRange ?? ((_, _) => false);
+        this.factionChanged = factionChanged ?? (_ => { });
     }
 
     /// <summary>Payload cases this dispatcher handles; every NOCTHEMAR payload (field number 100 or more) must be listed here.</summary>
@@ -35,7 +46,9 @@ public sealed class NocDispatcher {
             or ClientMessage.PayloadOneofCase.NocCreateItemRequest
             or ClientMessage.PayloadOneofCase.NocForgeConsumeRequest
             or ClientMessage.PayloadOneofCase.NocForgeFuseRequest
-            or ClientMessage.PayloadOneofCase.NocMimicEquipRequest;
+            or ClientMessage.PayloadOneofCase.NocMimicEquipRequest
+            or ClientMessage.PayloadOneofCase.NocFactionJoinRequest
+            or ClientMessage.PayloadOneofCase.NocReputationAddRequest;
 
     /// <summary>True when the payload belongs to NOCTHEMAR (executed or refused), false when it is not ours.</summary>
     public bool Handle(GameWorldPlayer player, ClientMessage message) {
@@ -67,6 +80,12 @@ public sealed class NocDispatcher {
                 Answer(player, message.NocMimicEquipRequest.Equipped
                     ? player.TryEquipMimic(message.NocMimicEquipRequest.AbilityId)
                     : player.TryUnequipMimic(message.NocMimicEquipRequest.AbilityId));
+                return true;
+            case ClientMessage.PayloadOneofCase.NocFactionJoinRequest:
+                HandleFactionJoin(player, message.NocFactionJoinRequest);
+                return true;
+            case ClientMessage.PayloadOneofCase.NocReputationAddRequest:
+                HandleReputationAdd(player, message.NocReputationAddRequest);
                 return true;
             default:
                 return false;
@@ -122,6 +141,37 @@ public sealed class NocDispatcher {
         }
 
         NocInventorySync.SendBagDelta(player, result);
+    }
+
+    /// <summary>Join a faction: refused unless the player is alive and a master of that faction is in range, then by <see cref="FactionService"/>'s rules. Accepted: the world is told so it can notify the players in range.</summary>
+    private void HandleFactionJoin(GameWorldPlayer player, NocFactionJoinRequest request) {
+        if (player.IsDead) {
+            Answer(player, "You are dead.");
+            return;
+        }
+
+        if (!factionMasterInRange(player, request.FactionId)) {
+            Answer(player, FactionService.NoMasterInRange);
+            return;
+        }
+
+        var refusal = player.TryJoinFaction(request.FactionId);
+        Answer(player, refusal);
+        if (refusal is null) {
+            factionChanged(player);
+        }
+    }
+
+    /// <summary>Debug only: adds to the sender's reputation. Refused (ignored, logged once per player) unless <c>nocthemar.debug</c> is true; an unknown faction is answered with <see cref="NocActionRefused"/>.</summary>
+    private void HandleReputationAdd(GameWorldPlayer player, NocReputationAddRequest request) {
+        if (!debugEnabled) {
+            LogDebugRefusal(player, nameof(NocReputationAddRequest));
+            return;
+        }
+
+        if (!player.TryAdjustReputation(request.FactionId, request.Delta)) {
+            Answer(player, FactionService.UnknownFaction);
+        }
     }
 
     private delegate string? ForgeAction(GameWorldPlayer player, out InventoryMutationResult? inventory);

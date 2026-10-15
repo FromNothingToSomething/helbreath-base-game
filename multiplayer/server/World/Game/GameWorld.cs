@@ -237,7 +237,7 @@ public sealed class GameWorld : IWorkerWorld {
             essenceDropper = new EssenceDropper(mimicService.Config, essenceRoll ?? Random.Shared.NextDouble);
         }
 
-        nocDispatcher = new NocDispatcher(settings.Nocthemar?.Debug ?? false, soulForgeInRange: IsSoulForgeInRange);
+        nocDispatcher = new NocDispatcher(settings.Nocthemar?.Debug ?? false, soulForgeInRange: IsSoulForgeInRange, factionChanged: BroadcastFactionChanged);
         this.monsterCatalog = monsterCatalog;
         this.monstersById = monstersById;
         this.spellsById = spellsById;
@@ -783,6 +783,8 @@ public sealed class GameWorld : IWorkerWorld {
             case ClientMessage.PayloadOneofCase.NocCreateItemRequest:
             case ClientMessage.PayloadOneofCase.NocForgeConsumeRequest:
             case ClientMessage.PayloadOneofCase.NocForgeFuseRequest:
+            case ClientMessage.PayloadOneofCase.NocFactionJoinRequest:
+            case ClientMessage.PayloadOneofCase.NocReputationAddRequest:
             case ClientMessage.PayloadOneofCase.NocMimicEquipRequest:
                 nocDispatcher.Handle(playerConnection, message.Message);
                 break;
@@ -921,6 +923,14 @@ public sealed class GameWorld : IWorkerWorld {
             request.SkinColor,
             player.HairStyleIndex,
             player.UnderwearColorIndex);
+        foreach (var nearbyPlayer in gameWorldRef.PlayerSpatialGrid.GetNearbyPlayers(player.PosX, player.PosY, player.SessionId)) {
+            NetworkManager.SendToPlayer(nearbyPlayer, msg);
+        }
+    }
+
+    /// <summary>Tells the players in range (not the player, who gets <see cref="Mmorpg.Network.NocStateUpdated"/>) which faction a player now belongs to.</summary>
+    private void BroadcastFactionChanged(GameWorldPlayer player) {
+        var msg = NetworkManager.CreatePlayerFactionChanged(player.PlayerId, player.FactionId);
         foreach (var nearbyPlayer in gameWorldRef.PlayerSpatialGrid.GetNearbyPlayers(player.PosX, player.PosY, player.SessionId)) {
             NetworkManager.SendToPlayer(nearbyPlayer, msg);
         }

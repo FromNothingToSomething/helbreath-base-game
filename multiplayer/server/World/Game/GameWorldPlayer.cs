@@ -1101,7 +1101,19 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         progression.TryGetXpToNext(noc.Level, out var xpToNext);
         return NetworkManager.CreateNocSnapshot(
             noc.Level, noc.Xp, xpToNext, mana, stats.MaxMana, race.Id, noc.ClassId, SkillPoints, noc.Skills,
-            MimicStatesForSnapshot(), noc.MimicEquipped, MimicSlotLimit);
+            MimicStatesForSnapshot(), noc.MimicEquipped, MimicSlotLimit, noc.FactionId, ReputationsForSnapshot());
+    }
+
+    /// <summary>The non-zero reputations with their faction, ascending by faction id.</summary>
+    private List<NocReputation> ReputationsForSnapshot() {
+        var list = new List<NocReputation>();
+        if (noc.Reputations is { Length: > 0 } all) {
+            foreach (var entry in all.Where(e => e.Value != 0).OrderBy(e => e.Id)) {
+                list.Add(new NocReputation { FactionId = entry.Id, Value = entry.Value });
+            }
+        }
+
+        return list;
     }
 
     /// <summary>The learned abilities with their level, ascending by id; empty without a mimicry catalog or learned ability.</summary>
