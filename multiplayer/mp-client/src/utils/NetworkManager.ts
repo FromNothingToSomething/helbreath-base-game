@@ -71,6 +71,7 @@ import {
     NOC_STATE_RESET,
     NOC_CATALOG_RECEIVED,
     NOC_ACTION_REFUSED_RECEIVED,
+    PLAYER_FACTION_CHANGED,
     CAST_AOE_SPELL_RECEIVED,
     CAST_DIRECTIONAL_AOE_SPELL_RECEIVED,
     MONSTER_CAST_AOE_SPELL_RECEIVED,
@@ -943,6 +944,36 @@ export class NetworkManager {
         return this.mimicNames.get(abilityId);
     }
 
+    /** Joins a faction; needs the faction master of that faction within range (refused with NocActionRefused otherwise). */
+    public sendNocFactionJoinRequest(factionId: number): void {
+        this.sendNocPayload({ $case: 'nocFactionJoinRequest', value: { factionId } });
+    }
+
+    /** Accepts a quest; needs a master of the quest's faction within range. */
+    public sendNocQuestAcceptRequest(questId: number): void {
+        this.sendNocPayload({ $case: 'nocQuestAcceptRequest', value: { questId } });
+    }
+
+    /** Gives an active quest up; works anywhere. */
+    public sendNocQuestAbandonRequest(questId: number): void {
+        this.sendNocPayload({ $case: 'nocQuestAbandonRequest', value: { questId } });
+    }
+
+    /** Turns a completed quest in; needs a master of the quest's faction within range and room in the bag for the rewards. */
+    public sendNocQuestTurnInRequest(questId: number): void {
+        this.sendNocPayload({ $case: 'nocQuestTurnInRequest', value: { questId } });
+    }
+
+    /** Debug only: the server ignores it unless Settings.json nocthemar.debug is true. */
+    public sendNocReputationAddRequest(factionId: number, delta: number): void {
+        this.sendNocPayload({ $case: 'nocReputationAddRequest', value: { factionId, delta } });
+    }
+
+    /** Name the character authenticated with (self nameplate). */
+    public getSelfCharacterName(): string {
+        return this.authenticateCharacterName;
+    }
+
     /** Chooses the class once; refused by the server (NocActionRefused) when one is already chosen. */
     public sendNocChooseClassRequest(classId: number): void {
         this.sendNocPayload({ $case: 'nocChooseClassRequest', value: { classId } });
@@ -1356,6 +1387,13 @@ export class NetworkManager {
                     break;
                 case 'nocStateUpdated':
                     this.handleNocSnapshot(message.payload.value.state);
+                    break;
+                case 'playerFactionChanged':
+                    EventBus.emit(PLAYER_FACTION_CHANGED, {
+                        playerId: String(message.payload.value.playerId),
+                        factionId: message.payload.value.factionId ?? null,
+                        self: String(message.payload.value.playerId) === this.selfPlayerId,
+                    });
                     break;
                 case 'nocActionRefused':
                     EventBus.emit(NOC_ACTION_REFUSED_RECEIVED, { reason: message.payload.value.reason });
@@ -1996,7 +2034,11 @@ export class NetworkManager {
         if (!snapshot) {
             return;
         }
-        EventBus.emit(NOC_STATE_RECEIVED, toNocViewModel(snapshot));
+        const view = toNocViewModel(snapshot);
+        EventBus.emit(NOC_STATE_RECEIVED, view);
+        if (this.selfPlayerId) {
+            EventBus.emit(PLAYER_FACTION_CHANGED, { playerId: this.selfPlayerId, factionId: view.factionId, self: true });
+        }
     }
 
     private handleHpUpdated(data: HpUpdated): void {
@@ -2418,6 +2460,7 @@ export class NetworkManager {
                 hairStyleIndex,
                 underwearColorIndex,
                 characterName: p.characterName,
+                factionId: p.factionId,
                 activeTemporaryEffects: p.activeTemporaryEffects?.length ? [...p.activeTemporaryEffects] : [],
             };
             if (eventData.playerId === this.selfPlayerId) {

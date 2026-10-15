@@ -325,6 +325,8 @@ export interface NetworkPlayer {
     underwearColorIndex: number;
     /** Display name from server `PlayerEnteredRange.character_name`. */
     characterName: string;
+    /** Faction of the player (Factions.json id); undefined when none. */
+    factionId?: number;
     /** Active temporary effect types (proto `TemporaryEffectType` values). */
     activeTemporaryEffects: number[];
 }

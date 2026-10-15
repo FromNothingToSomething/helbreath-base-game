@@ -32,6 +32,24 @@ export interface NocViewModel {
     mimicEquipped: number[];
     /** Mimicry bar slots available now; 0 without mimicry. */
     mimicSlots: number;
+    /** Joined faction (Factions.json id); null when none. */
+    factionId: number | null;
+    /** Reputation per faction id; a faction absent from the snapshot is 0. */
+    reputations: ReputationEntry[];
+    /** Active quests with their progress (kill count or bag content, as the server computed it). */
+    quests: QuestProgress[];
+    /** Ids of the completed quests (never repeatable). */
+    questsDone: number[];
+}
+
+export interface ReputationEntry {
+    factionId: number;
+    value: number;
+}
+
+export interface QuestProgress {
+    questId: number;
+    progress: number;
 }
 
 export interface MimicStateView {
@@ -66,5 +84,9 @@ export function toNocViewModel(snapshot: NocSnapshot): NocViewModel {
         mimics: (snapshot.mimics ?? []).map((m) => ({ id: m.id, xp: Number(m.xp), level: m.level })),
         mimicEquipped: [...(snapshot.mimicEquipped ?? [])],
         mimicSlots: snapshot.mimicSlots ?? 0,
+        factionId: snapshot.factionId ?? null,
+        reputations: (snapshot.reputations ?? []).map((r) => ({ factionId: r.factionId, value: r.value })),
+        quests: (snapshot.quests ?? []).map((q) => ({ questId: q.questId, progress: q.progress })),
+        questsDone: [...(snapshot.questsDone ?? [])],
     };
 }

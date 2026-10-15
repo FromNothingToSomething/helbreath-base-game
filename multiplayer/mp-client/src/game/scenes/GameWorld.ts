@@ -2729,6 +2729,7 @@ export class GameWorld extends Scene {
             },
             data.characterName,
         );
+        otherPlayer.setFactionId(data.factionId);
         if (data.spawnProtection) {
             otherPlayer.setSpawnProtectionEffect(true);
         }

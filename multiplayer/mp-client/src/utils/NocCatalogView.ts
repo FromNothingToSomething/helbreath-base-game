@@ -1,4 +1,5 @@
 import type { NocCatalog } from '../proto/generated/nocthemar';
+import { toFactionModels, toQuestModels, toReputationRules, type FactionView, type QuestView, type ReputationRules } from './FactionView';
 
 export type SkillKind = 'passive' | 'active' | 'ultimate';
 
@@ -90,6 +91,15 @@ export interface CatalogModel {
     fusions: FusionView[];
     /** Null on a server without mimicry. */
     mimicRules: MimicRules | null;
+    /** Empty on a server without factions. */
+    factions: FactionView[];
+    factionsById: Map<number, FactionView>;
+    /** Null on a server without factions. */
+    reputationRules: ReputationRules | null;
+    quests: QuestView[];
+    questsById: Map<number, QuestView>;
+    /** Active quests allowed at once; 0 without quests. */
+    questMaxActive: number;
 }
 
 const KINDS: SkillKind[] = ['passive', 'active', 'ultimate'];
@@ -153,6 +163,8 @@ export function toCatalogModel(catalog: NocCatalog): CatalogModel {
                   levelsPerSlot: catalog.mimicLevelsPerSlot ?? 0,
                   slotsMax: catalog.mimicSlotsMax ?? 0,
               };
+    const factions = toFactionModels(catalog.factions ?? []);
+    const quests = toQuestModels(catalog.quests ?? []);
     return {
         classes,
         skills,
@@ -161,6 +173,12 @@ export function toCatalogModel(catalog: NocCatalog): CatalogModel {
         mimicsById: new Map(mimics.map((m) => [m.id, m])),
         fusions: (catalog.fusions ?? []).map((f) => ({ a: f.a, b: f.b, result: f.result })),
         mimicRules,
+        factions,
+        factionsById: new Map(factions.map((f) => [f.id, f])),
+        reputationRules: toReputationRules(catalog.reputationRules),
+        quests,
+        questsById: new Map(quests.map((q) => [q.id, q])),
+        questMaxActive: catalog.questMaxActive ?? 0,
     };
 }
 

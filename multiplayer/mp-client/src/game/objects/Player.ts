@@ -18,7 +18,9 @@ import { mapDialogStore } from '../../ui/store/MapDialog.store';
 import { playerDialogStore } from '../../ui/store/PlayerDialog.store';
 import { PLAYER_RUNNING, PLAYER_WALKING, PLAYER_MELEE_ATTACK, PLAYER_TAKE_UNARMED_DAMAGE, PLAYER_CAST, SPELL_CAST_FAILED, MALE_CRITICAL_ATTACK, FEMALE_CRITICAL_ATTACK, MALE_DEATH, FEMALE_DEATH, MALE_RESET_POSITION, FEMALE_RESET_POSITION } from '../../constants/SoundFileNames';
 import { EventBus } from '../EventBus';
-import { PLAYER_POSITION_CHANGED, TILE_OCCUPANCY_REAPPLY_REQUESTED, OUT_UI_PLAYER_DIED, OUT_UI_CAST_STARTED, OUT_UI_CAST_READY, OUT_UI_CAST_REMOVED, PLAYER_CAST_ANIMATION_STARTED, PLAYER_CONFIRM_SPELL_TARGET, EQUIP_ITEM, IN_UI_CHANGE_GENDER, IN_UI_CHANGE_SKIN_COLOR, IN_UI_CHANGE_UNDERWEAR_COLOR, IN_UI_CHANGE_HAIR_STYLE, NATIVE_OVERLAY_HEALTH_BAR_HIDDEN, NATIVE_OVERLAY_HEALTH_BAR_UPDATED } from '../../constants/EventNames';
+import { PLAYER_POSITION_CHANGED, TILE_OCCUPANCY_REAPPLY_REQUESTED, OUT_UI_PLAYER_DIED, OUT_UI_CAST_STARTED, OUT_UI_CAST_READY, OUT_UI_CAST_REMOVED, PLAYER_CAST_ANIMATION_STARTED, PLAYER_CONFIRM_SPELL_TARGET, EQUIP_ITEM, IN_UI_CHANGE_GENDER, IN_UI_CHANGE_SKIN_COLOR, IN_UI_CHANGE_UNDERWEAR_COLOR, IN_UI_CHANGE_HAIR_STYLE, NATIVE_OVERLAY_HEALTH_BAR_HIDDEN, NATIVE_OVERLAY_HEALTH_BAR_UPDATED, PLAYER_FACTION_CHANGED, PLAYER_TAG_OPTIONS_CHANGED } from '../../constants/EventNames';
+import { PlayerTag } from './PlayerTag';
+import { getSelfFactionId, getTagOptions, type PlayerTagOptions } from '../../utils/PlayerTagState';
 import { AttackType, Gender, MonsterAttackType, SkinColor, TemporaryEffectType } from '../../Types';
 import { calculateAnimationDuration, calculateFrameRateFromDuration } from '../../utils/AnimationUtils';
 import { FloatingText } from '../effects/FloatingText';
@@ -131,6 +133,11 @@ export class Player extends GameObject {
     private playerId: string | undefined = undefined;
     /** Remote: server `PlayerEnteredRange.character_name` for UI hover. */
     private characterName = '';
+    /** Remote players: faction from `PlayerEnteredRange.faction_id` / `PlayerFactionChanged`; the local player reads PlayerTagState. */
+    private remoteFactionId: number | null = null;
+    private tag?: PlayerTag;
+    private tagOptionsHandler?: () => void;
+    private tagFactionHandler?: (data: { playerId: string; factionId: number | null; self: boolean }) => void;
     private activeSpellName: string | undefined = undefined;
 
     /** When true, player is dashing: moving with attack animation instead of run animation */
@@ -378,6 +385,9 @@ export class Player extends GameObject {
                 }
             }
         }
+        if (this.isLocalPlayer) {
+            this.refreshTag();
+        }
     }
 
     private onEquipItem(itemType: ItemTypes, itemId: number | undefined, effectOverrides?: Effect[]): void {
@@ -488,6 +498,7 @@ export class Player extends GameObject {
         this.appearanceManager.updateAssetPositions(finalPixelX, finalPixelY, ghostConfig);
         this.updateShadowPosition();
         this.updateShadowDepth();
+        this.tag?.setPosition(finalPixelX, finalPixelY);
     }
 
     /**
@@ -1927,6 +1938,36 @@ export class Player extends GameObject {
 
     public setCharacterName(name: string): void {
         this.characterName = name.trim();
+        this.refreshTag();
+    }
+
+    /** Remote players: faction known from the server (null = none). */
+    public setFactionId(factionId: number | null | undefined): void {
+        this.remoteFactionId = factionId ?? null;
+        this.refreshTag();
+    }
+
+    /** Creates the tag on first use and re-reads name, faction and options. */
+    private refreshTag(): void {
+        const options: PlayerTagOptions = getTagOptions();
+        const name = this.isLocalPlayer
+            ? (getNetworkManager(this.scene.game)?.getSelfCharacterName() ?? '')
+            : this.characterName;
+        const factionId = this.isLocalPlayer ? getSelfFactionId() : this.remoteFactionId;
+        if (!this.tag) {
+            this.tag = new PlayerTag(this.scene);
+            this.tagOptionsHandler = () => this.refreshTag();
+            this.tagFactionHandler = (data) => {
+                if (this.isLocalPlayer ? data.self : data.playerId === this.getPlayerId()) {
+                    this.remoteFactionId = data.factionId;
+                    this.refreshTag();
+                }
+            };
+            EventBus.on(PLAYER_TAG_OPTIONS_CHANGED, this.tagOptionsHandler);
+            EventBus.on(PLAYER_FACTION_CHANGED, this.tagFactionHandler);
+        }
+        this.tag.setContent(options.showNames ? name : '', factionId, options.showFaction);
+        this.tag.setPosition(this.getAnimatedPixelX(), this.getAnimatedPixelY());
     }
 
     public getCharacterName(): string {
@@ -2960,6 +3001,14 @@ export class Player extends GameObject {
         this.cancelPendingBowArrowSpawn();
         this.destroyCastingCircleEffect();
         this.hideHealthBar();
+        if (this.tagOptionsHandler) {
+            EventBus.off(PLAYER_TAG_OPTIONS_CHANGED, this.tagOptionsHandler);
+        }
+        if (this.tagFactionHandler) {
+            EventBus.off(PLAYER_FACTION_CHANGED, this.tagFactionHandler);
+        }
+        this.tag?.destroy();
+        this.tag = undefined;
         this.movement.pendingSyncCommands = [];
         super.destroy();
     }

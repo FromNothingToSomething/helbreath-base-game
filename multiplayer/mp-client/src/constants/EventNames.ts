@@ -118,6 +118,10 @@ export const MONSTER_ATTACKED_RECEIVED = 'monster-attacked-received';
 export const MONSTER_ATTACKED_MONSTER_RECEIVED = 'monster-attacked-monster-received';
 /** Server monster damage on a player (viewers + victim). Payload: PlayerReceiveDamageEventData */
 export const PLAYER_RECEIVE_DAMAGE_RECEIVED = 'player-receive-damage-received';
+/** A player's faction changed or became known: payload { playerId: string; factionId: number | null; self: boolean }. Self included (from the NOC snapshot). */
+export const PLAYER_FACTION_CHANGED = 'player-faction-changed';
+/** Name/faction tag options changed: payload PlayerTagOptions. */
+export const PLAYER_TAG_OPTIONS_CHANGED = 'player-tag-options-changed';
 /** Self player only: authoritative level/XP/mana (InitialState.noc and NocStateUpdated). Payload: NocViewModel */
 export const NOC_STATE_RECEIVED = 'noc-state-received';
 /** Static classes and skills, once per session (InitialState.noc_catalog). Payload: CatalogModel */
