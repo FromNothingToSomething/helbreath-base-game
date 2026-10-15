@@ -25,12 +25,14 @@ internal static class TestSupport {
     public static FactionConfig ShippedFactions() => FactionConfig.LoadAsync(Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Factions.json")).GetAwaiter().GetResult();
 
     /// <summary>The shipped Config/Nocthemar/Quests.json validated against the shipped factions, monsters and items.</summary>
-    public static QuestConfig ShippedQuests() {
+    public static QuestConfig ShippedQuests() => shippedQuests.Value;
+
+    private static readonly Lazy<QuestConfig> shippedQuests = new(() => {
         var quests = QuestConfig.LoadAsync(ShippedFactions(), Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Quests.json")).GetAwaiter().GetResult();
         quests.ValidateMonsters(ShippedMonsterFactions());
         quests.ValidateItems(ShippedItems().Keys.ToArray());
         return quests;
-    }
+    });
 
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -45,7 +47,7 @@ internal static class TestSupport {
 
     /// <summary>The shipped classes and skills with the given handlers (none by default: every shipped skill is a catalog entry or a stat passive).</summary>
     public static NocContent ShippedContent(SkillHandlerRegistry? handlers = null) =>
-        new(ShippedClasses(), ShippedSkills(), Progression(), handlers ?? BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), ShippedMimic(), BuiltinMimicHandlers.Register(new MimicHandlerRegistry()), ShippedFactions());
+        new(ShippedClasses(), ShippedSkills(), Progression(), handlers ?? BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), ShippedMimic(), BuiltinMimicHandlers.Register(new MimicHandlerRegistry()), ShippedFactions(), ShippedQuests());
 
     /// <summary>Loads a NOCTHEMAR block into a player the way a login does.</summary>
     public static void Restore(GameWorldPlayer player, NocState noc) {

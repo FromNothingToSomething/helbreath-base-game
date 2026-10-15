@@ -57,6 +57,8 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
     private readonly ReputationService? reputationService;
     /// <summary>Faction rules and perks; null together with <see cref="reputationService"/>.</summary>
     private readonly FactionService? factionService;
+    /// <summary>Quest rules; null without quest content.</summary>
+    private readonly QuestService? questService;
     /// <summary>Handlers of the mimicry abilities; null together with <see cref="mimicService"/>.</summary>
     private readonly MimicHandlerRegistry? mimicHandlers;
     /// <summary>Unix ms at which each mimicry ability can be cast again.</summary>
@@ -250,6 +252,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
             mimicService = nocContent.Mimic;
             reputationService = nocContent.Reputation;
             factionService = nocContent.Factions;
+            questService = nocContent.Quests;
             mimicHandlers = nocContent.MimicHandlers;
             NocCatalog = nocContent.Catalog;
             skillEffects = new SkillEffects(stats, new SkillHookTable(nocContent.Handlers));
@@ -662,13 +665,18 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
             return;
         }
 
-        var rules = reputationService!.Rules;
-        var perksChanged = noc.FactionId is int own && result.Changes.Any(c => c.FactionId == own && rules.TierOf(c.Before) != rules.TierOf(c.After));
+        var perksChanged = OwnTierChanged(result.Changes);
         noc = noc with { Reputations = result.State.Reputations };
         nocDirty = true;
         if (perksChanged) {
             RefreshDerivedStats();
         }
+    }
+
+    /// <summary>True when one of the changes moved the character's standing with its own faction across a tier (its perks change).</summary>
+    private bool OwnTierChanged(IReadOnlyList<ReputationChange> changes) {
+        var rules = reputationService!.Rules;
+        return noc.FactionId is int own && changes.Any(c => c.FactionId == own && rules.TierOf(c.Before) != rules.TierOf(c.After));
     }
 
     /// <summary>Joins a faction (see <see cref="FactionService.Join"/>); returns null on success, otherwise the reason. The perks of the new standing apply at once.</summary>
@@ -688,6 +696,134 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
     }
 
     private const string NoFactionContent = "Factions are not available.";
+    private const string NoQuestContent = "Quests are not available.";
+
+    /// <summary>Active quests with their progress, ascending by id; empty without quests.</summary>
+    public IReadOnlyList<QuestEntry> ActiveQuests => noc.Quests ?? [];
+
+    /// <summary>Ids of the quests turned in, ascending.</summary>
+    public IReadOnlyList<int> CompletedQuestIds => noc.QuestsDone ?? [];
+
+    /// <summary>The catalog entry of a quest (to know which faction master it belongs to); false without quest content or for an unknown id.</summary>
+    public bool TryGetQuest(int questId, out QuestDefinition quest) {
+        if (questService is null) {
+            quest = null!;
+            return false;
+        }
+
+        return questService.Config.TryGet(questId, out quest);
+    }
+
+    /// <summary>Accepts a quest (see <see cref="QuestService.Accept"/>); returns null on success, otherwise the reason. A deliver quest starts with what the bag already holds.</summary>
+    public string? TryAcceptQuest(int questId) {
+        if (questService is null) {
+            return NoQuestContent;
+        }
+
+        var result = questService.Accept(CreateNocState(), questId);
+        if (!result.Ok) {
+            return result.Refusal;
+        }
+
+        noc = questService.SyncDeliver(result.State, inventoryManager.CountItem);
+        nocDirty = true;
+        return null;
+    }
+
+    /// <summary>Gives an active quest up (see <see cref="QuestService.Abandon"/>); returns null on success, otherwise the reason.</summary>
+    public string? TryAbandonQuest(int questId) {
+        if (questService is null) {
+            return NoQuestContent;
+        }
+
+        var result = questService.Abandon(CreateNocState(), questId);
+        if (!result.Ok) {
+            return result.Refusal;
+        }
+
+        noc = result.State;
+        nocDirty = true;
+        return null;
+    }
+
+    /// <summary>
+    /// Turns a completed quest in, all or nothing. Refusals: those of <see cref="QuestService.CheckTurnIn"/> (the bag is counted afresh for a deliver quest),
+    /// then <see cref="QuestService.BagFull"/> when the delivered items taken out and the reward items put in would leave more than <c>rules.bagSlots</c> rows.
+    /// Accepted: the delivered items leave the bag, the reward items enter it, the reputation and experience are granted and the quest is recorded as done.
+    /// <paramref name="inventory"/> holds the bag mutations to send (empty on a refusal). Returns null on success, otherwise the reason.
+    /// </summary>
+    public string? TryTurnInQuest(int questId, out IReadOnlyList<InventoryMutationResult> inventory) {
+        inventory = [];
+        if (questService is null) {
+            return NoQuestContent;
+        }
+
+        SyncDeliverQuests();
+        var state = CreateNocState();
+        var refusal = questService.CheckTurnIn(state, questId);
+        if (refusal is not null) {
+            return refusal;
+        }
+
+        var quest = questService.Config.Quests[questId];
+        var taken = quest.Kind == QuestKind.Deliver ? new[] { (quest.TargetId, quest.Count) } : Array.Empty<(int, int)>();
+        var given = quest.RewardItems.Select(i => (i.ItemId, i.Quantity)).ToArray();
+        if (!inventoryManager.CanHold(taken, given, questService.Config.BagSlots)) {
+            return QuestService.BagFull;
+        }
+
+        var result = questService.TurnIn(state, questId, stats.Get(StatId.ReputationGainMult));
+        var mutations = new List<InventoryMutationResult>();
+        foreach (var (itemId, quantity) in taken) {
+            inventoryManager.TryRemoveItemsById(itemId, quantity, out var removed);
+            mutations.Add(removed);
+        }
+
+        foreach (var (itemId, quantity) in given) {
+            inventoryManager.TryCreateItems(itemId, quantity, out var added);
+            mutations.Add(added);
+        }
+
+        var perksChanged = reputationService is not null && OwnTierChanged(result.Changes);
+        noc = result.State;
+        nocDirty = true;
+        if (perksChanged) {
+            RefreshDerivedStats();
+        }
+
+        if (quest.RewardXp > 0) {
+            GrantXp(quest.RewardXp);
+        }
+
+        inventory = mutations;
+        return null;
+    }
+
+    /// <summary>Counts a kill of a monster for the active kill quests; the caller is the killer only (the fatal blow).</summary>
+    public void RegisterQuestKill(int monsterCatalogId) {
+        if (questService is null || noc.Quests is null) {
+            return;
+        }
+
+        var updated = questService.RecordKill(noc, monsterCatalogId);
+        if (!ReferenceEquals(updated, noc)) {
+            noc = updated;
+            nocDirty = true;
+        }
+    }
+
+    /// <summary>Brings the progress of the active deliver quests in line with the bag. Cheap without such a quest; called before each state flush and each turn-in.</summary>
+    private void SyncDeliverQuests() {
+        if (questService is null || noc.Quests is null) {
+            return;
+        }
+
+        var updated = questService.SyncDeliver(noc, inventoryManager.CountItem);
+        if (!ReferenceEquals(updated, noc)) {
+            noc = updated;
+            nocDirty = true;
+        }
+    }
 
     /// <summary>Replaces the faction modifiers: those of the joined faction at the current tier, nothing else.</summary>
     private void ApplyFactionPerks() {
@@ -1139,6 +1275,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
     /// Returns true when at least one message was sent.
     /// </summary>
     public bool TryFlushNocUpdates() {
+        SyncDeliverQuests();
         if (!nocDirty && !hpDirty) {
             return false;
         }
@@ -1215,6 +1352,12 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
                 // An unknown faction is dropped, values are clamped to the range; never refused.
                 restored = reputationService.Sanitize(restored, out var reputationWarnings);
                 LogMimicWarnings(reputationWarnings);
+            }
+
+            if (questService is not null) {
+                // Unknown, duplicate or surplus quests are dropped, progress is clamped; never refused.
+                restored = questService.Sanitize(restored, out var questWarnings);
+                LogMimicWarnings(questWarnings);
             }
 
             ApplyNocState(restored);

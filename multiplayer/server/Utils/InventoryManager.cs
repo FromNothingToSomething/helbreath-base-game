@@ -498,6 +498,59 @@ public sealed class InventoryManager {
         return true;
     }
 
+    /// <summary>
+    /// Whether the bag would hold at most <paramref name="maxRows"/> rows after taking <paramref name="removals"/> out and putting <paramref name="additions"/> in, in that order,
+    /// with the same stacking rules as <see cref="TryRemoveItemsById"/> and <see cref="TryCreateItems"/> (a stackable item shares one row, anything else takes one row per unit).
+    /// False when a removal is not available or an added item is unknown. Changes nothing; equipped items do not count.
+    /// </summary>
+    public bool CanHold(IEnumerable<(int ItemId, int Quantity)> removals, IEnumerable<(int ItemId, int Quantity)> additions, int maxRows) {
+        ArgumentNullException.ThrowIfNull(removals);
+        ArgumentNullException.ThrowIfNull(additions);
+        var rows = bagItems.Select(item => (item.ItemId, Quantity: (long)item.Quantity)).ToList();
+        foreach (var (itemId, quantity) in removals) {
+            if (quantity <= 0 || rows.Where(r => r.ItemId == itemId).Sum(r => r.Quantity) < quantity) {
+                return false;
+            }
+
+            var left = (long)quantity;
+            for (var i = rows.Count - 1; i >= 0 && left > 0; i--) {
+                if (rows[i].ItemId != itemId) {
+                    continue;
+                }
+
+                if (rows[i].Quantity > left) {
+                    rows[i] = (itemId, rows[i].Quantity - left);
+                    left = 0;
+                } else {
+                    left -= rows[i].Quantity;
+                    rows.RemoveAt(i);
+                }
+            }
+        }
+
+        foreach (var (itemId, quantity) in additions) {
+            if (quantity < 1 || !itemsById.TryGetValue(itemId, out var itemDef)) {
+                return false;
+            }
+
+            if (itemDef.Stackable == true) {
+                if (!rows.Any(r => r.ItemId == itemId)) {
+                    rows.Add((itemId, quantity));
+                }
+            } else {
+                for (var i = 0; i < quantity; i++) {
+                    rows.Add((itemId, 1));
+                }
+            }
+
+            if (rows.Count > maxRows) {
+                return false;
+            }
+        }
+
+        return rows.Count <= maxRows;
+    }
+
     /// <summary>Adds a ground item back into the bag, preserving quantity/effects and merging with existing stackable rows by item id.</summary>
     public bool TryAddGroundItemToBag(GroundItemState groundItem, out InventoryMutationResult result) {
         ArgumentNullException.ThrowIfNull(groundItem);

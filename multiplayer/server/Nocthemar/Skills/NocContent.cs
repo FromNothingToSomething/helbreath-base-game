@@ -10,7 +10,7 @@ namespace Server.Nocthemar.Skills;
 /// Passing none (null) to a world or a player keeps the game exactly as it was before classes existed (no class, no skills, nothing sent).
 /// </summary>
 public sealed class NocContent {
-    public NocContent(ClassConfig classes, SkillConfig skills, ProgressionConfig progression, SkillHandlerRegistry handlers, MimicConfig? mimic = null, MimicHandlerRegistry? mimicHandlers = null, FactionConfig? factions = null) {
+    public NocContent(ClassConfig classes, SkillConfig skills, ProgressionConfig progression, SkillHandlerRegistry handlers, MimicConfig? mimic = null, MimicHandlerRegistry? mimicHandlers = null, FactionConfig? factions = null, QuestConfig? quests = null) {
         ArgumentNullException.ThrowIfNull(classes);
         ArgumentNullException.ThrowIfNull(skills);
         ArgumentNullException.ThrowIfNull(progression);
@@ -23,6 +23,7 @@ public sealed class NocContent {
         Mimic = mimic is null ? null : new MimicService(mimic);
         Reputation = factions is null ? null : new ReputationService(factions);
         Factions = Reputation is null ? null : new FactionService(Reputation);
+        Quests = quests is null || Reputation is null ? null : new QuestService(quests, Reputation);
         MimicHandlers = mimicHandlers ?? new MimicHandlerRegistry();
         if (mimic is not null) {
             MimicHandlers.ValidateCatalog(mimic);
@@ -42,6 +43,9 @@ public sealed class NocContent {
 
     /// <summary>Joining a faction and its perks; null together with <see cref="Reputation"/>.</summary>
     public FactionService? Factions { get; }
+
+    /// <summary>Quest rules; null when the content has no quest catalog or no faction catalog (quests need a faction).</summary>
+    public QuestService? Quests { get; }
 
     /// <summary>Handlers of the mimicry abilities (empty when none were given).</summary>
     public MimicHandlerRegistry MimicHandlers { get; }
