@@ -19,9 +19,9 @@ public class QuestServiceTests {
         // Not an interpolated raw string: its content has "}}" runs, which would close a hole.
         const string template = """
             {"schemaVersion":1,"rules":{"maxActive":MAX,"bagSlots":40},"quests":[
-            {"id":0,"key":"a","name":"A","factionId":0,"minTier":"Neutral","kind":"kill","monsterId":51,"count":2,"rewards":{"xp":1}},
-            {"id":1,"key":"b","name":"B","factionId":0,"minTier":"Neutral","kind":"kill","monsterId":61,"count":2,"rewards":{"xp":1}},
-            {"id":2,"key":"c","name":"C","factionId":0,"minTier":"Neutral","kind":"kill","monsterId":52,"count":2,"rewards":{"xp":1}}]}
+            {"id":0,"key":"qa","name":"A","factionId":0,"minTier":"Neutral","kind":"kill","monsterId":51,"count":2,"rewards":{"xp":1}},
+            {"id":1,"key":"qb","name":"B","factionId":0,"minTier":"Neutral","kind":"kill","monsterId":61,"count":2,"rewards":{"xp":1}},
+            {"id":2,"key":"qc","name":"C","factionId":0,"minTier":"Neutral","kind":"kill","monsterId":52,"count":2,"rewards":{"xp":1}}]}
             """;
         var json = template.Replace("MAX", maxActive.ToString());
         return new QuestService(QuestConfig.Parse(json, TestSupport.ShippedFactions()), new ReputationService(TestSupport.ShippedFactions()));
@@ -129,7 +129,8 @@ public class QuestServiceTests {
 
         Assert.Equal(new[] { new QuestEntry(0, 1), new QuestEntry(1, 0), new QuestEntry(2, 0) }, after.Quests);
         Assert.Same(state, service.RecordKill(state, 77));
-        Assert.Same(state, service.RecordKill(Member(), 51)); // no quest at all
+        var noQuest = Member();
+        Assert.Same(noQuest, service.RecordKill(noQuest, 51)); // no quest at all
     }
 
     [Fact]
@@ -244,7 +245,7 @@ public class QuestServiceTests {
         var service = Service();
         var clean = Member(quests: [new QuestEntry(0, 3)], done: [1]);
 
-        Assert.Equal(clean, service.Sanitize(clean, out var none));
+        Assert.Same(clean, service.Sanitize(clean, out var none));
         Assert.Empty(none);
 
         var empty = service.Sanitize(Member(quests: [], done: []), out _);

@@ -236,11 +236,18 @@ public sealed class QuestService {
             notes.Add($"quest {last} dropped: more than {quests.MaxActive} active quests");
         }
 
-        return state with {
-            Quests = active.Count == 0 ? null : [.. active.Select(p => new QuestEntry(p.Key, p.Value))],
-            QuestsDone = done.Count == 0 ? null : [.. done],
-        };
+        var cleanQuests = active.Count == 0 ? null : active.Select(p => new QuestEntry(p.Key, p.Value)).ToArray();
+        var cleanDone = done.Count == 0 ? null : done.ToArray();
+        // Records compare arrays by reference: hand back the very same state when the block was already clean.
+        if (notes.Count == 0 && SameItems(state.Quests, cleanQuests) && SameItems(state.QuestsDone, cleanDone)) {
+            return state;
+        }
+
+        return state with { Quests = cleanQuests, QuestsDone = cleanDone };
     }
+
+    private static bool SameItems<T>(T[]? a, T[]? b) =>
+        a is null || b is null ? a is null && b is null : a.SequenceEqual(b);
 
     private static QuestEntry[]? WithoutQuest(QuestEntry[]? active, int questId) {
         var rest = (active ?? []).Where(e => e.Id != questId).ToArray();

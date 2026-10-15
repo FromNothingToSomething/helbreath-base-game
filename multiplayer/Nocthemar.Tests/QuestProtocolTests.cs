@@ -187,9 +187,9 @@ public class QuestProtocolTests {
 
     [Fact]
     public void The_snapshot_lists_quests_and_done_ids_ascending() {
-        var (player, sent) = NewPlayer(quests: [new QuestEntry(2, 1), new QuestEntry(0, 4)], done: [5, 1]);
+        var (player, _) = NewPlayer(quests: [new QuestEntry(2, 1), new QuestEntry(0, 4)], done: [5, 1]);
 
-        var state = State(player, sent);
+        var state = player.CreateNocSnapshot();
 
         Assert.Equal(new[] { (0, 4), (2, 1) }, state.Quests.Select(q => (q.QuestId, q.Progress)).ToArray());
         Assert.Equal(new[] { 1, 5 }, state.QuestsDone);
