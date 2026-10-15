@@ -14,7 +14,7 @@
  * The learned abilities, their experience, the bar and the slot count are part of the compared state: they must survive the reconnect and the server restart.
  *
  * T87 extends it to the factions, reputation and quests (module 5): after the mimicry each client takes enough XP for level 10, adds reputation with its faction through the
- * debug request (Friendly tier), is refused a join without a master in range, summons the master of its faction (NPC 11 + faction id), joins (a second join is refused), accepts the
+ * debug request (Friendly tier), summons the master of its faction (NPC 11 + faction id; masters of other bots may already be in range, so no out-of-range check here), joins (a second join is refused), accepts the
  * deliver quest of its faction, creates the items in the bag, turns the quest in (reputation and completion recorded) and leaves a second quest active. Faction, reputations, active
  * quests and completed quests are part of the compared state: they must survive the reconnect and the server restart.
  *
@@ -284,13 +284,8 @@ async function factions(bot: Bot, index: number): Promise<void> {
     bot.reputationAdd(factionId, FRIENDLY_FLOOR + 500);
     await waitFor(() => repOf(bot, factionId) === FRIENDLY_FLOOR + 500, 5000, `${bot.name}: reputation not applied (is nocthemar.debug true?)`);
 
-    // No master yet: refused with the exact sentence, state unchanged.
-    bot.refusals = [];
-    bot.factionJoin(factionId);
-    await waitFor(() => bot.refusals.length > 0, 5000, `${bot.name}: join without a master was not answered`);
-    if (bot.refusals[0] !== NO_MASTER) throw new Error(`${bot.name}: join without a master refused with "${bot.refusals[0]}", expected "${NO_MASTER}"`);
-    if (bot.last!.factionId !== null) throw new Error(`${bot.name}: joined without a master`);
-
+    // No negative "join without a master" step here: every bot stands near the same spawn, so a master summoned by another bot of the same faction is often already in range
+    // and the join is legitimately accepted (no answer). The out-of-range refusal is covered by the server tests (NocDispatcher).
     bot.summonNpc(FACTION_MASTER_NPC(factionId));
     await sleep(300);
     await viaMaster(bot, () => bot.factionJoin(factionId), () => bot.last?.factionId === factionId, `join faction ${factionId}`);
