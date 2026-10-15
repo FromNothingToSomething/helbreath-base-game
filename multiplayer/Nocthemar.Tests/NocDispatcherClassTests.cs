@@ -133,7 +133,7 @@ public class NocDispatcherClassTests {
     public void GameWorld_routes_the_new_payloads_to_the_dispatcher() {
         var source = File.ReadAllText(FindSource("World", "Game", "GameWorld.cs"));
 
-        Assert.Matches(@"case ClientMessage\.PayloadOneofCase\.NocChooseClassRequest:\s*case ClientMessage\.PayloadOneofCase\.NocLearnSkillRequest:\s*case ClientMessage\.PayloadOneofCase\.NocRespecRequest:\s*case ClientMessage\.PayloadOneofCase\.NocGrantXpRequest:\s*case ClientMessage\.PayloadOneofCase\.NocCreateItemRequest:\s*nocDispatcher\.Handle\(", source);
+        Assert.Matches(@"case ClientMessage\.PayloadOneofCase\.NocChooseClassRequest:\s*case ClientMessage\.PayloadOneofCase\.NocLearnSkillRequest:\s*case ClientMessage\.PayloadOneofCase\.NocRespecRequest:\s*case ClientMessage\.PayloadOneofCase\.NocGrantXpRequest:\s*case ClientMessage\.PayloadOneofCase\.NocCreateItemRequest:\s*case ClientMessage\.PayloadOneofCase\.NocForgeConsumeRequest:\s*case ClientMessage\.PayloadOneofCase\.NocForgeFuseRequest:\s*case ClientMessage\.PayloadOneofCase\.NocMimicEquipRequest:\s*nocDispatcher\.Handle\(", source);
     }
 
     [Fact]

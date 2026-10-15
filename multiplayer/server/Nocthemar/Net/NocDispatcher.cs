@@ -1,4 +1,5 @@
 using Mmorpg.Network;
+using Server.Nocthemar.Core;
 using Server.Utils;
 using Server.World.Game;
 
@@ -12,14 +13,17 @@ namespace Server.Nocthemar.Net;
 public sealed class NocDispatcher {
     private readonly bool debugEnabled;
     private readonly Action<string> log;
+    private readonly Func<GameWorldPlayer, bool> soulForgeInRange;
     private readonly HashSet<(long PlayerId, string Request)> playersAlreadyRefused = new();
 
     /// <summary>Largest quantity one debug item request may create.</summary>
     public const int MaxDebugQuantity = 100;
 
-    public NocDispatcher(bool debugEnabled, Action<string>? log = null) {
+    /// <param name="soulForgeInRange">Tells whether a Soul Forge NPC of the player's world is within <see cref="SoulForge.RangeCells"/> of the player; none given = there is no forge, consume and fuse requests are refused.</param>
+    public NocDispatcher(bool debugEnabled, Action<string>? log = null, Func<GameWorldPlayer, bool>? soulForgeInRange = null) {
         this.debugEnabled = debugEnabled;
         this.log = log ?? Console.Error.WriteLine;
+        this.soulForgeInRange = soulForgeInRange ?? (_ => false);
     }
 
     /// <summary>Payload cases this dispatcher handles; every NOCTHEMAR payload (field number 100 or more) must be listed here.</summary>
@@ -28,7 +32,10 @@ public sealed class NocDispatcher {
             or ClientMessage.PayloadOneofCase.NocChooseClassRequest
             or ClientMessage.PayloadOneofCase.NocLearnSkillRequest
             or ClientMessage.PayloadOneofCase.NocRespecRequest
-            or ClientMessage.PayloadOneofCase.NocCreateItemRequest;
+            or ClientMessage.PayloadOneofCase.NocCreateItemRequest
+            or ClientMessage.PayloadOneofCase.NocForgeConsumeRequest
+            or ClientMessage.PayloadOneofCase.NocForgeFuseRequest
+            or ClientMessage.PayloadOneofCase.NocMimicEquipRequest;
 
     /// <summary>True when the payload belongs to NOCTHEMAR (executed or refused), false when it is not ours.</summary>
     public bool Handle(GameWorldPlayer player, ClientMessage message) {
@@ -49,6 +56,17 @@ public sealed class NocDispatcher {
                 return true;
             case ClientMessage.PayloadOneofCase.NocCreateItemRequest:
                 HandleCreateItem(player, message.NocCreateItemRequest);
+                return true;
+            case ClientMessage.PayloadOneofCase.NocForgeConsumeRequest:
+                HandleForge(player, (GameWorldPlayer p, out InventoryMutationResult? inventory) => p.ForgeConsume(message.NocForgeConsumeRequest.AbilityId, out inventory));
+                return true;
+            case ClientMessage.PayloadOneofCase.NocForgeFuseRequest:
+                HandleForge(player, (GameWorldPlayer p, out InventoryMutationResult? inventory) => p.ForgeFuse(message.NocForgeFuseRequest.AbilityA, message.NocForgeFuseRequest.AbilityB, out inventory));
+                return true;
+            case ClientMessage.PayloadOneofCase.NocMimicEquipRequest:
+                Answer(player, message.NocMimicEquipRequest.Equipped
+                    ? player.TryEquipMimic(message.NocMimicEquipRequest.AbilityId)
+                    : player.TryUnequipMimic(message.NocMimicEquipRequest.AbilityId));
                 return true;
             default:
                 return false;
@@ -104,6 +122,27 @@ public sealed class NocDispatcher {
         }
 
         NocInventorySync.SendBagDelta(player, result);
+    }
+
+    private delegate string? ForgeAction(GameWorldPlayer player, out InventoryMutationResult? inventory);
+
+    /// <summary>Consume or fuse at the Soul Forge: refused unless the player is alive and a forge is in range. Accepted: the bag delta is sent now, the new abilities with the next <see cref="NocStateUpdated"/>.</summary>
+    private void HandleForge(GameWorldPlayer player, ForgeAction action) {
+        if (player.IsDead) {
+            Answer(player, "You are dead.");
+            return;
+        }
+
+        if (!soulForgeInRange(player)) {
+            Answer(player, SoulForge.NoForgeInRange);
+            return;
+        }
+
+        var refusal = action(player, out var inventory);
+        Answer(player, refusal);
+        if (refusal is null && inventory is not null) {
+            NocInventorySync.SendBagDelta(player, inventory);
+        }
     }
 
     private void LogDebugRefusal(GameWorldPlayer player, string request) {

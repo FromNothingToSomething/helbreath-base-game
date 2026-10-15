@@ -12,6 +12,7 @@ export const NPC_SPRITE_NAMES: readonly string[] = [
     'mcgaffin',
     'perry',
     'devlin',
+    'gandlf', // 10: Forge d'Âmes (provisional sprite, shared with Gandalf)
 ];
 
 /**

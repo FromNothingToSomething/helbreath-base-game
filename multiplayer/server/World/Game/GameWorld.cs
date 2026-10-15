@@ -237,7 +237,7 @@ public sealed class GameWorld : IWorkerWorld {
             essenceDropper = new EssenceDropper(mimicService.Config, essenceRoll ?? Random.Shared.NextDouble);
         }
 
-        nocDispatcher = new NocDispatcher(settings.Nocthemar?.Debug ?? false);
+        nocDispatcher = new NocDispatcher(settings.Nocthemar?.Debug ?? false, soulForgeInRange: IsSoulForgeInRange);
         this.monsterCatalog = monsterCatalog;
         this.monstersById = monstersById;
         this.spellsById = spellsById;
@@ -781,6 +781,9 @@ public sealed class GameWorld : IWorkerWorld {
             case ClientMessage.PayloadOneofCase.NocRespecRequest:
             case ClientMessage.PayloadOneofCase.NocGrantXpRequest:
             case ClientMessage.PayloadOneofCase.NocCreateItemRequest:
+            case ClientMessage.PayloadOneofCase.NocForgeConsumeRequest:
+            case ClientMessage.PayloadOneofCase.NocForgeFuseRequest:
+            case ClientMessage.PayloadOneofCase.NocMimicEquipRequest:
                 nocDispatcher.Handle(playerConnection, message.Message);
                 break;
             case ClientMessage.PayloadOneofCase.None:
@@ -1277,6 +1280,17 @@ public sealed class GameWorld : IWorkerWorld {
         killer.RegisterKill();
         killer.GrantKillXp(progression.ResolveMonsterXp(monsterConfig?.Xp));
         DropEssence(monster);
+    }
+
+    /// <summary>True when a Soul Forge NPC of this world stands within <see cref="SoulForge.RangeCells"/> of the player.</summary>
+    private bool IsSoulForgeInRange(GameWorldPlayer player) {
+        foreach (var npc in npcsByNpcId.Values) {
+            if (npc.CatalogNpcId == SoulForge.NpcCatalogId && SoulForge.IsInRange(player.PosX, player.PosY, npc.PosX, npc.PosY)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
