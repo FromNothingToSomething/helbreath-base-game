@@ -51,7 +51,8 @@ public sealed record MimicFile(
     MimicSlotsFile? Slots = null,
     MimicXpFile? Xp = null,
     List<MimicAbilityFile>? Abilities = null,
-    List<MimicFusionFile>? Fusions = null);
+    List<MimicFusionFile>? Fusions = null,
+    double? EssenceVialDropChance = null);
 
 /// <summary>One validated mimicry ability (a monster ability learned from an essence, or the result of a fusion).</summary>
 public sealed class MimicAbility {
@@ -186,6 +187,9 @@ public sealed class MimicConfig {
     public const int MaxManaCost = 10_000;
     public const int MaxLevelCap = 10;
 
+    /// <summary>Chance that any monster killed by a player also leaves an Essence Vial, when <c>essenceVialDropChance</c> is absent from Mimic.json.</summary>
+    public const double DefaultEssenceVialDropChance = 0.05;
+
     private static readonly Regex KeyPattern = new("^[a-z][a-z0-9_]{1,47}$", RegexOptions.Compiled);
 
     private static readonly JsonSerializerOptions JsonOptions = new() {
@@ -197,11 +201,12 @@ public sealed class MimicConfig {
     private readonly Dictionary<int, MimicAbility> byMonster;
     private readonly Dictionary<(int, int), MimicFusion> byPair;
 
-    private MimicConfig(MimicAbility[] abilities, MimicFusion[] fusions, MimicXpTable xp, MimicSlotTable slots) {
+    private MimicConfig(MimicAbility[] abilities, MimicFusion[] fusions, MimicXpTable xp, MimicSlotTable slots, double essenceVialDropChance) {
         Abilities = abilities;
         Fusions = fusions;
         Xp = xp;
         Slots = slots;
+        EssenceVialDropChance = essenceVialDropChance;
         byId = abilities.ToDictionary(a => a.Id);
         byMonster = abilities.Where(a => a.MonsterId is not null).ToDictionary(a => a.MonsterId!.Value);
         byPair = fusions.ToDictionary(f => (f.A, f.B));
@@ -215,6 +220,9 @@ public sealed class MimicConfig {
     public MimicXpTable Xp { get; }
 
     public MimicSlotTable Slots { get; }
+
+    /// <summary>Probability that a monster killed by a player also leaves an Essence Vial (the source of captures for classes without the passive); 0 switches the drop off.</summary>
+    public double EssenceVialDropChance { get; }
 
     public bool TryGet(int id, out MimicAbility ability) => byId.TryGetValue(id, out ability!);
 
@@ -300,6 +308,11 @@ public sealed class MimicConfig {
 
         var slots = ParseSlots(file.Slots, errors);
         var xp = ParseXp(file.Xp, errors);
+        var vialChance = file.EssenceVialDropChance ?? DefaultEssenceVialDropChance;
+        if (!(vialChance >= 0 && vialChance <= 1)) {
+            errors.Add($"essenceVialDropChance must be in [0, 1] (got {vialChance})");
+        }
+
         var abilities = new List<MimicAbility>();
         if (file.Abilities is null || file.Abilities.Count == 0) {
             errors.Add("abilities must not be empty");
@@ -322,7 +335,7 @@ public sealed class MimicConfig {
             throw new InvalidOperationException($"Invalid Mimic.json: {string.Join("; ", errors)}.");
         }
 
-        return new MimicConfig([.. abilities.OrderBy(a => a.Id)], [.. fusions.OrderBy(f => f.Result)], xp, slots);
+        return new MimicConfig([.. abilities.OrderBy(a => a.Id)], [.. fusions.OrderBy(f => f.Result)], xp, slots, vialChance);
     }
 
     private static MimicSlotTable? ParseSlots(MimicSlotsFile? file, List<string> errors) {

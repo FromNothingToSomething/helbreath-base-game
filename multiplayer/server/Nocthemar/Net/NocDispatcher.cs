@@ -12,7 +12,10 @@ namespace Server.Nocthemar.Net;
 public sealed class NocDispatcher {
     private readonly bool debugEnabled;
     private readonly Action<string> log;
-    private readonly HashSet<long> playersAlreadyRefused = new();
+    private readonly HashSet<(long PlayerId, string Request)> playersAlreadyRefused = new();
+
+    /// <summary>Largest quantity one debug item request may create.</summary>
+    public const int MaxDebugQuantity = 100;
 
     public NocDispatcher(bool debugEnabled, Action<string>? log = null) {
         this.debugEnabled = debugEnabled;
@@ -24,7 +27,8 @@ public sealed class NocDispatcher {
         payload is ClientMessage.PayloadOneofCase.NocGrantXpRequest
             or ClientMessage.PayloadOneofCase.NocChooseClassRequest
             or ClientMessage.PayloadOneofCase.NocLearnSkillRequest
-            or ClientMessage.PayloadOneofCase.NocRespecRequest;
+            or ClientMessage.PayloadOneofCase.NocRespecRequest
+            or ClientMessage.PayloadOneofCase.NocCreateItemRequest;
 
     /// <summary>True when the payload belongs to NOCTHEMAR (executed or refused), false when it is not ours.</summary>
     public bool Handle(GameWorldPlayer player, ClientMessage message) {
@@ -43,6 +47,9 @@ public sealed class NocDispatcher {
             case ClientMessage.PayloadOneofCase.NocRespecRequest:
                 HandleRespec(player);
                 return true;
+            case ClientMessage.PayloadOneofCase.NocCreateItemRequest:
+                HandleCreateItem(player, message.NocCreateItemRequest);
+                return true;
             default:
                 return false;
         }
@@ -58,10 +65,7 @@ public sealed class NocDispatcher {
     /// <summary>Debug only: forgets the sender's skills. Refused (ignored, logged once per player) unless <c>nocthemar.debug</c> is true.</summary>
     private void HandleRespec(GameWorldPlayer player) {
         if (!debugEnabled) {
-            if (playersAlreadyRefused.Add(player.PlayerId)) {
-                log($"[Noc] Refused NocRespecRequest from player {player.PlayerId}: nocthemar.debug is false.");
-            }
-
+            LogDebugRefusal(player, nameof(NocRespecRequest));
             return;
         }
 
@@ -71,10 +75,7 @@ public sealed class NocDispatcher {
     /// <summary>Debug only: grants XP to the sender. Refused (ignored, logged once per player) unless <c>nocthemar.debug</c> is true; non-positive amounts are ignored.</summary>
     private void HandleGrantXp(GameWorldPlayer player, NocGrantXpRequest request) {
         if (!debugEnabled) {
-            if (playersAlreadyRefused.Add(player.PlayerId)) {
-                log($"[Noc] Refused NocGrantXpRequest from player {player.PlayerId}: nocthemar.debug is false.");
-            }
-
+            LogDebugRefusal(player, nameof(NocGrantXpRequest));
             return;
         }
 
@@ -83,5 +84,31 @@ public sealed class NocDispatcher {
         }
 
         player.GrantXp(request.Amount);
+    }
+
+    /// <summary>Debug only: puts <see cref="NocCreateItemRequest.Quantity"/> units of an item in the sender's bag. Refused (ignored, logged once per player) unless <c>nocthemar.debug</c> is true; an unknown item or a quantity outside [1, <see cref="MaxDebugQuantity"/>] is answered with <see cref="NocActionRefused"/>.</summary>
+    private void HandleCreateItem(GameWorldPlayer player, NocCreateItemRequest request) {
+        if (!debugEnabled) {
+            LogDebugRefusal(player, nameof(NocCreateItemRequest));
+            return;
+        }
+
+        if (request.Quantity < 1 || request.Quantity > MaxDebugQuantity) {
+            Answer(player, $"Quantity must be between 1 and {MaxDebugQuantity}.");
+            return;
+        }
+
+        if (!player.InventoryManager.TryCreateItems(request.ItemId, request.Quantity, out var result)) {
+            Answer(player, "Unknown item.");
+            return;
+        }
+
+        NocInventorySync.SendBagDelta(player, result);
+    }
+
+    private void LogDebugRefusal(GameWorldPlayer player, string request) {
+        if (playersAlreadyRefused.Add((player.PlayerId, request))) {
+            log($"[Noc] Refused {request} from player {player.PlayerId}: nocthemar.debug is false.");
+        }
     }
 }

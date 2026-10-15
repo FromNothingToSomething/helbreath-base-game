@@ -100,6 +100,7 @@ message ClientMessage {
     NocChooseClassRequest noc_choose_class_request = 101;
     NocLearnSkillRequest noc_learn_skill_request = 102;
     NocRespecRequest noc_respec_request = 103;
+    NocCreateItemRequest noc_create_item_request = 104;
   }
 }
 

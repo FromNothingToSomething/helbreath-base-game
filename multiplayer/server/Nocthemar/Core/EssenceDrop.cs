@@ -27,6 +27,12 @@ public sealed class EssenceDropper {
 
         return roll() < ability.DropChance ? ability : null;
     }
+
+    /// <summary>True when a monster killed by a player also leaves an Essence Vial. Draws one random value, none when the drop is switched off (<c>essenceVialDropChance</c> 0).</summary>
+    public bool RollVial() {
+        var chance = mimic.EssenceVialDropChance;
+        return chance > 0 && roll() < chance;
+    }
 }
 
 /// <summary>Remembers which ground items are essence orbs (dropped by a monster), as opposed to essences a player put on the ground: only orbs must be captured. Bounded; the oldest are forgotten first.</summary>

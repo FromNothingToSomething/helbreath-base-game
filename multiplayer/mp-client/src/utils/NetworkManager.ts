@@ -916,6 +916,11 @@ export class NetworkManager {
         this.sendPacket(command);
     }
 
+    /** Debug only: the server ignores it unless Settings.json nocthemar.debug is true. Quantity 1..100. */
+    public sendNocCreateItemRequest(itemId: number, quantity: number): void {
+        this.sendNocPayload({ $case: 'nocCreateItemRequest', value: { itemId, quantity } });
+    }
+
     /** Chooses the class once; refused by the server (NocActionRefused) when one is already chosen. */
     public sendNocChooseClassRequest(classId: number): void {
         this.sendNocPayload({ $case: 'nocChooseClassRequest', value: { classId } });

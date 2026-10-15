@@ -242,6 +242,41 @@ public sealed class InventoryManager {
         return true;
     }
 
+    /// <summary>
+    /// Creates <paramref name="quantity"/> units of an item: one stack (merged into an existing one) when the item is stackable, otherwise one row per unit.
+    /// False (nothing changed) for an unknown item or a quantity below 1. The caller bounds the quantity.
+    /// </summary>
+    public bool TryCreateItems(int itemId, int quantity, out InventoryMutationResult result) {
+        result = new InventoryMutationResult();
+        if (quantity < 1 || !itemsById.TryGetValue(itemId, out var itemDef)) {
+            return false;
+        }
+
+        if (itemDef.Stackable == true) {
+            for (var i = 0; i < bagItems.Count; i++) {
+                var existing = bagItems[i];
+                if (existing.ItemId != itemId || existing.Quantity >= int.MaxValue) {
+                    continue;
+                }
+
+                existing.Quantity = AddStackQuantitiesSaturating(existing.Quantity, quantity);
+                result.AddedToBag.Add(existing.Clone());
+                return true;
+            }
+        }
+
+        var rows = itemDef.Stackable == true ? 1 : quantity;
+        for (var i = 0; i < rows; i++) {
+            var newItem = new InventoryItemState(
+                itemId, CreateItemUid(), bagX: null, bagY: null, quantity: itemDef.Stackable == true ? quantity : 1, bagZIndex: bagItems.Count, effectOverrides: null);
+            bagItems.Add(newItem);
+            result.AddedToBag.Add(newItem.Clone());
+        }
+
+        NormalizeBagZIndices();
+        return true;
+    }
+
     /// <summary>Moves a bag item to new UI coordinates when provided and always brings it to the front of the bag z-order.</summary>
     public bool TryMoveItemInBag(long itemUid, int? bagX, int? bagY, out InventoryMutationResult result) {
         result = new InventoryMutationResult();

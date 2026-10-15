@@ -780,6 +780,7 @@ public sealed class GameWorld : IWorkerWorld {
             case ClientMessage.PayloadOneofCase.NocLearnSkillRequest:
             case ClientMessage.PayloadOneofCase.NocRespecRequest:
             case ClientMessage.PayloadOneofCase.NocGrantXpRequest:
+            case ClientMessage.PayloadOneofCase.NocCreateItemRequest:
                 nocDispatcher.Handle(playerConnection, message.Message);
                 break;
             case ClientMessage.PayloadOneofCase.None:
@@ -1278,19 +1279,39 @@ public sealed class GameWorld : IWorkerWorld {
         DropEssence(monster);
     }
 
-    /// <summary>Leaves the essence orb of the monster's ability on its cell, when the dice and the world (raid) allow it. The orb must then be captured to be picked up.</summary>
+    /// <summary>
+    /// Leaves on the monster's cell, when the dice allow it, an Essence Vial (any monster; <c>essenceVialDropChance</c>) and the essence orb of the monster's ability (raid worlds only for a mythic).
+    /// The orb is dropped last so it stays on top; it must be captured to be picked up, the vial is an ordinary item.
+    /// </summary>
     private void DropEssence(GameWorldMonster monster) {
-        var ability = essenceDropper?.Roll(monster.CatalogMonsterId, raid);
-        if (ability?.EssenceItemId is not int essenceItemId || !itemsById.ContainsKey(essenceItemId)) {
+        if (essenceDropper is null) {
             return;
         }
 
-        var orb = new InventoryItemState(essenceItemId, InventoryManager.CreateItemUid(), bagX: null, bagY: null, quantity: 1, bagZIndex: 0, effectOverrides: null);
-        if (!groundStateTracker.TryAddDroppedItem(orb, monster.PosX, monster.PosY, out var previousTopItem, out var addedItem) || addedItem is null) {
+        if (essenceDropper.RollVial()) {
+            LeaveOnGround(MimicIds.EssenceVialItemId, monster, isOrb: false);
+        }
+
+        var ability = essenceDropper.Roll(monster.CatalogMonsterId, raid);
+        if (ability?.EssenceItemId is int essenceItemId) {
+            LeaveOnGround(essenceItemId, monster, isOrb: true);
+        }
+    }
+
+    private void LeaveOnGround(int itemId, GameWorldMonster monster, bool isOrb) {
+        if (!itemsById.ContainsKey(itemId)) {
             return;
         }
 
-        essenceOrbs.Mark(addedItem.ItemUid);
+        var item = new InventoryItemState(itemId, InventoryManager.CreateItemUid(), bagX: null, bagY: null, quantity: 1, bagZIndex: 0, effectOverrides: null);
+        if (!groundStateTracker.TryAddDroppedItem(item, monster.PosX, monster.PosY, out var previousTopItem, out var addedItem) || addedItem is null) {
+            return;
+        }
+
+        if (isOrb) {
+            essenceOrbs.Mark(addedItem.ItemUid);
+        }
+
         GroundStateVisibility.BroadcastGroundItemTopStateChanged(gameWorldRef, previousTopItem, addedItem);
     }
 

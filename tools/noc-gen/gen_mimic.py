@@ -79,6 +79,7 @@ for i, (a, b, key, name, kind, classes, desc) in enumerate(F):
 
 doc = {"schemaVersion": 1, "slots": {"first": 1, "levelsPerSlot": 10, "max": 9},
        "xp": {"maxLevel": 10, "perCast": 1, "thresholds": [10, 30, 60, 100, 150, 210, 280, 360, 450], "powerPerLevel": 0.05},
+       "essenceVialDropChance": 0.05,
        "abilities": abilities, "fusions": fusions}
 (root / "Config/Nocthemar/Mimic.json").write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 

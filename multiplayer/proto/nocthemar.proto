@@ -57,6 +57,13 @@ message NocLearnSkillRequest {
 message NocRespecRequest {
 }
 
+// Debug only: puts `quantity` units of an item in the sender's bag (1..100). Ignored (and logged) unless Settings.json nocthemar.debug is true;
+// an unknown item or a quantity out of range is answered with NocActionRefused.
+message NocCreateItemRequest {
+  int32 item_id = 1;
+  int32 quantity = 2;
+}
+
 // Sent to the sender only when a NOCTHEMAR request is refused; `reason` is a short English sentence meant to be shown to the player.
 message NocActionRefused {
   string reason = 1;

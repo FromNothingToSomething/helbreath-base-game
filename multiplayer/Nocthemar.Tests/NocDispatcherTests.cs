@@ -137,7 +137,7 @@ public class NocDispatcherTests {
         Assert.NotNull(file);
         var source = File.ReadAllText(file!.FullName);
 
-        Assert.Matches(@"case ClientMessage\.PayloadOneofCase\.NocGrantXpRequest:\s*nocDispatcher\.Handle\(", source);
+        Assert.Matches(@"case ClientMessage\.PayloadOneofCase\.NocCreateItemRequest:\s*nocDispatcher\.Handle\(", source);
         Assert.Matches(@"default:\s*throw new InvalidOperationException\(\s*\$""Unhandled client payload", source);
     }
 }
