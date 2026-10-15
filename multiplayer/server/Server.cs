@@ -44,6 +44,7 @@ classes.ValidateRaces(races);
 var mimicConfig = await MimicConfig.LoadAsync(classes);
 var factionConfig = await FactionConfig.LoadAsync();
 var questConfig = await QuestConfig.LoadAsync(factionConfig);
+var zoneConfig = await ZoneConfig.LoadAsync(factionConfig);
 // Skill handlers are registered here; NocContent fails fast when a ready skill names a handler that is not.
 var nocContent = new NocContent(classes, classSkills, progression, BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), mimicConfig, BuiltinMimicHandlers.Register(new MimicHandlerRegistry()), factionConfig, questConfig);
 var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");
@@ -55,6 +56,8 @@ var sessionsByServerId = new ConcurrentDictionary<Guid, PlayerSession>();
 
 var gameWorlds = await Config.LoadGameWorldsConfig();
 var gameWorldsById = gameWorlds.ToDictionary(gameWorld => gameWorld.Id, StringComparer.Ordinal);
+zoneConfig.ValidateWorlds(gameWorldsById.Keys);
+zoneConfig.ValidateLevels(progression.MaxLevel);
 var worldsListMessage = NetworkManager.CreateWorldsList(gameWorlds);
 var monstersConfig = await Config.LoadMonstersConfig();
 var monstersListMessage = NetworkManager.CreateMonstersList(monstersConfig);
@@ -84,6 +87,7 @@ foreach (var gw in gameWorlds) {
         gw.Map,
         teleportLocs.SelectMany(teleportLoc => teleportLoc.Locs));
     Config.ValidateGameWorldNpcBounds(gw, occupancyTracker);
+    zoneConfig.ValidateMap(gw.Id, occupancyTracker.SizeX, occupancyTracker.SizeY);
     var world = worldRegistry.RegisterGameWorld(
         gw.Id,
         gw.Map,

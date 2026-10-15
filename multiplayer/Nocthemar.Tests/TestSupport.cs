@@ -34,6 +34,21 @@ internal static class TestSupport {
         return quests;
     });
 
+    /// <summary>The shipped Config/Nocthemar/Zones.json validated against the shipped factions.</summary>
+    public static ZoneConfig ShippedZones() => ZoneConfig.LoadAsync(ShippedFactions(), Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Zones.json")).GetAwaiter().GetResult();
+
+    /// <summary>A file of the server source tree (found by walking up from the test output to a <c>server</c> directory), e.g. <c>SourceFile("Config", "maps", "aresden.amd")</c>.</summary>
+    public static string SourceFile(params string[] relative) {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent) {
+            var candidate = Path.Combine(new[] { dir.FullName, "server" }.Concat(relative).ToArray());
+            if (File.Exists(candidate)) {
+                return candidate;
+            }
+        }
+
+        throw new FileNotFoundException("server/" + string.Join('/', relative));
+    }
+
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     /// <summary>The shipped Config/Items.json as a catalog.</summary>
