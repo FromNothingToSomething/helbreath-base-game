@@ -462,7 +462,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         }
 
         skillEffects.Apply(skillService!.Learned(noc));
-        skillEffects.Hooks.Run(SkillHook.OnApply, PlayerId, null, 0, lastHpTickMs, actor: this);
+        skillEffects.Hooks.Run(SkillHook.OnApply, SkillCasterId, null, 0, lastHpTickMs, actor: this);
     }
 
     /// <inheritdoc />
@@ -493,6 +493,9 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
 
     /// <summary>Handlers of the learned skills by hook; null when the world has no class content.</summary>
     internal SkillHookTable? SkillHookSet => skillEffects?.Hooks;
+
+    /// <summary>Id handlers see as <see cref="SkillContext.CasterId"/>: the 64-bit player id truncated to 32 bits (identification only, not unique across players).</summary>
+    private int SkillCasterId => unchecked((int)PlayerId);
 
     private readonly Dictionary<int, long> skillReadyAtMs = [];
     private readonly List<(int SkillId, long UntilMs)> buffs = [];
@@ -587,7 +590,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         }
 
         var skill = FindLearnedSkill(skillId)!;
-        var result = skillEffects!.Hooks.RunSkill(skillId, SkillHook.OnCast, PlayerId, targetId, nowMs, this);
+        var result = skillEffects!.Hooks.RunSkill(skillId, SkillHook.OnCast, SkillCasterId, targetId, nowMs, this);
         if (!result.Success) {
             return result.Refusal ?? "The skill failed.";
         }
@@ -604,7 +607,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
             noc = noc with { Kills = noc.Kills + 1 };
         }
 
-        skillEffects?.Hooks.Run(SkillHook.OnKill, PlayerId, null, 0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), actor: this);
+        skillEffects?.Hooks.Run(SkillHook.OnKill, SkillCasterId, null, 0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), actor: this);
     }
 
     /// <summary>Chooses the class once. Returns null on success, otherwise the reason shown to the player.</summary>
