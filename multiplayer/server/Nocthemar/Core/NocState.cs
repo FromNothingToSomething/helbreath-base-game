@@ -30,8 +30,8 @@ public sealed record NocState(
     int[]? MimicEquipped = null,
     FactionRep[]? Reputations = null) {
 
-    /// <summary>Layout 2 adds <see cref="Skills"/> and <see cref="Kills"/>; layout 3 adds <see cref="Mimics"/> and <see cref="MimicEquipped"/>. An older block reads as "none of these".</summary>
-    public const int CurrentV = 3;
+    /// <summary>Layout 2 adds <see cref="Skills"/> and <see cref="Kills"/>; layout 3 adds <see cref="Mimics"/> and <see cref="MimicEquipped"/>; layout 4 adds <see cref="Reputations"/> (and gives <see cref="FactionId"/> its meaning). An older block reads as "none of these".</summary>
+    public const int CurrentV = 4;
 
     /// <summary>Race given to characters saved before races existed (migration 1 -> 2): the first race, Valdorniens.</summary>
     public const int LegacyRaceId = 0;

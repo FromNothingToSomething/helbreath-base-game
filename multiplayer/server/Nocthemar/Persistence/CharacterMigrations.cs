@@ -70,7 +70,7 @@ public sealed class Migration2To3 : ICharacterMigration {
 }
 
 /// <summary>
-/// 3 -> 4: the NOCTHEMAR block gets layout <see cref="NocState.CurrentV"/> (mimicry abilities and equipment are new nullable fields: nobody has learned one yet).
+/// 3 -> 4: the NOCTHEMAR block gets layout 4 at least (mimicry abilities and equipment are new nullable fields: nobody has learned one yet).
 /// A null block stays null. Idempotent: the layout is only ever raised, and nothing else is touched.
 /// </summary>
 public sealed class Migration3To4 : ICharacterMigration {
@@ -80,7 +80,21 @@ public sealed class Migration3To4 : ICharacterMigration {
     public PlayerPersistenceState Apply(PlayerPersistenceState state) =>
         state.Noc is null
             ? state
-            : state with { Noc = state.Noc with { V = Math.Max(state.Noc.V, NocState.CurrentV) } };
+            : state with { Noc = state.Noc with { V = Math.Max(state.Noc.V, 3) } };
+}
+
+/// <summary>
+/// 4 -> 5: the NOCTHEMAR block gets layout 4 at least (faction and reputations are new nullable fields: nobody has joined a faction yet).
+/// A null block stays null. Idempotent: the layout is only ever raised, and nothing else is touched.
+/// </summary>
+public sealed class Migration4To5 : ICharacterMigration {
+    public int From => 4;
+    public int To => 5;
+
+    public PlayerPersistenceState Apply(PlayerPersistenceState state) =>
+        state.Noc is null
+            ? state
+            : state with { Noc = state.Noc with { V = Math.Max(state.Noc.V, 4) } };
 }
 
 /// <summary>Applies the ordered migrations needed to bring a loaded save to <see cref="CurrentVersion"/>.</summary>
@@ -116,7 +130,7 @@ public sealed class CharacterMigrator {
 
     /// <summary>Chain for the shipped schema (<see cref="CharacterSchema.Current"/>).</summary>
     public static CharacterMigrator CreateDefault(ProgressionConfig progression) =>
-        new([new Migration0To1(progression), new Migration1To2(), new Migration2To3(), new Migration3To4()], CharacterSchema.Current);
+        new([new Migration0To1(progression), new Migration1To2(), new Migration2To3(), new Migration3To4(), new Migration4To5()], CharacterSchema.Current);
 
     /// <summary>
     /// Upgrades <paramref name="state"/> to <see cref="CurrentVersion"/>.

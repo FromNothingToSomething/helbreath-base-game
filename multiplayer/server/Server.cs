@@ -42,8 +42,9 @@ var classes = await ClassConfig.LoadAsync();
 var classSkills = await SkillConfig.LoadAsync(classes);
 classes.ValidateRaces(races);
 var mimicConfig = await MimicConfig.LoadAsync(classes);
+var factionConfig = await FactionConfig.LoadAsync();
 // Skill handlers are registered here; NocContent fails fast when a ready skill names a handler that is not.
-var nocContent = new NocContent(classes, classSkills, progression, BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), mimicConfig, BuiltinMimicHandlers.Register(new MimicHandlerRegistry()));
+var nocContent = new NocContent(classes, classSkills, progression, BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), mimicConfig, BuiltinMimicHandlers.Register(new MimicHandlerRegistry()), factionConfig);
 var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");
 // Fails fast on an unusable persistence.provider, before any world worker starts.
 var characterStore = CharacterStoreFactory.Create(settings.Persistence, charsDirectory, progression);

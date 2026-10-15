@@ -53,6 +53,8 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
     private readonly SkillService? skillService;
     /// <summary>Mimicry rules; null when the world has no mimicry catalog.</summary>
     private readonly MimicService? mimicService;
+    /// <summary>Faction and reputation rules; null when the world has no faction catalog.</summary>
+    private readonly ReputationService? reputationService;
     /// <summary>Handlers of the mimicry abilities; null together with <see cref="mimicService"/>.</summary>
     private readonly MimicHandlerRegistry? mimicHandlers;
     /// <summary>Unix ms at which each mimicry ability can be cast again.</summary>
@@ -244,6 +246,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         if (nocContent is not null) {
             skillService = nocContent.Rules;
             mimicService = nocContent.Mimic;
+            reputationService = nocContent.Reputation;
             mimicHandlers = nocContent.MimicHandlers;
             NocCatalog = nocContent.Catalog;
             skillEffects = new SkillEffects(stats, new SkillHookTable(nocContent.Handlers));
@@ -1111,6 +1114,12 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
                 // Learned abilities are checked against the catalog and the class; the bar is trimmed to the real slots by ApplyNocState once the stats are known.
                 restored = mimicService.Sanitize(restored, MimicService.MaxTotalSlots, out var mimicWarnings);
                 LogMimicWarnings(mimicWarnings);
+            }
+
+            if (reputationService is not null) {
+                // An unknown faction is dropped, values are clamped to the range; never refused.
+                restored = reputationService.Sanitize(restored, out var reputationWarnings);
+                LogMimicWarnings(reputationWarnings);
             }
 
             ApplyNocState(restored);

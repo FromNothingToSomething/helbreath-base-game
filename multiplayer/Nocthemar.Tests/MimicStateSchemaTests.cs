@@ -60,7 +60,7 @@ public class MimicStateSchemaTests {
 
         var migrated = new Migration3To4().Apply(Sample(3, old));
 
-        Assert.Equal(old with { V = NocState.CurrentV }, migrated.Noc);
+        Assert.Equal(old with { V = 3 }, migrated.Noc);
         Assert.Null(migrated.Noc!.Mimics);
         Assert.Null(migrated.Noc.MimicEquipped);
     }
@@ -85,36 +85,36 @@ public class MimicStateSchemaTests {
     }
 
     [Fact]
-    public void A_schema_3_save_reaches_schema_4_with_its_progress() {
+    public void A_schema_3_save_reaches_the_current_schema_with_its_progress() {
         var saved = new NocState(3, 20, 99, 55, RaceId: 5, ClassId: 2, Skills: [1020, 1021], Kills: 40);
 
         var migrated = Default().Migrate(Sample(3, saved));
 
-        Assert.Equal(4, migrated.SchemaVersion);
-        Assert.Equal(saved, migrated.Noc);
+        Assert.Equal(CharacterSchema.Current, migrated.SchemaVersion);
+        Assert.Equal(saved with { V = 4 }, migrated.Noc);
     }
 
     [Fact]
     public void A_schema_2_save_goes_through_both_new_steps() {
         var migrated = Default().Migrate(Sample(2, new NocState(1, 20, 99, 55, RaceId: 5)));
 
-        Assert.Equal(4, migrated.SchemaVersion);
+        Assert.Equal(CharacterSchema.Current, migrated.SchemaVersion);
         Assert.Equal(NocState.CurrentV, migrated.Noc!.V);
         Assert.Null(migrated.Noc.Mimics);
     }
 
     [Fact]
-    public void The_chain_has_four_steps_and_refuses_schema_5() {
-        Assert.Equal(4, CharacterSchema.Current);
-        Assert.Equal(4, Default().CurrentVersion);
-        Assert.Throws<CharacterSchemaTooNewException>(() => Default().Migrate(Sample(5, null)));
+    public void The_chain_has_five_steps_and_refuses_schema_6() {
+        Assert.Equal(5, CharacterSchema.Current);
+        Assert.Equal(5, Default().CurrentVersion);
+        Assert.Throws<CharacterSchemaTooNewException>(() => Default().Migrate(Sample(6, null)));
     }
 
     [Fact]
     public void The_persisted_state_of_a_new_player_has_no_mimicry() {
         var state = TestSupport.NewPlayer().CreatePersistenceState("aresden");
 
-        Assert.Equal(4, state.SchemaVersion);
+        Assert.Equal(CharacterSchema.Current, state.SchemaVersion);
         Assert.Null(state.Noc!.Mimics);
         Assert.Null(state.Noc.MimicEquipped);
     }

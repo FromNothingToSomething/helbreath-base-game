@@ -14,6 +14,9 @@ public static class CharacterSchema {
     /// <summary>Like <see cref="V2"/>, and the <c>Noc</c> block may carry a class, learned skills and a kill counter (migration 2 -> 3 only raises the block layout, nobody has a class yet).</summary>
     public const int V3 = 3;
 
-    /// <summary>Current format: like <see cref="V3"/>, and the <c>Noc</c> block may carry learned mimicry abilities and the equipped ones (migration 3 -> 4 only raises the block layout, nobody has learned one yet).</summary>
-    public const int Current = 4;
+    /// <summary>Like <see cref="V3"/>, and the <c>Noc</c> block may carry learned mimicry abilities and the equipped ones (migration 3 -> 4 only raises the block layout, nobody has learned one yet).</summary>
+    public const int V4 = 4;
+
+    /// <summary>Current format: like <see cref="V4"/>, and the <c>Noc</c> block may carry a faction and reputations (migration 4 -> 5 only raises the block layout, nobody has joined a faction yet).</summary>
+    public const int Current = 5;
 }

@@ -16,11 +16,11 @@ public class SkillStateSchemaTests {
 
     [Fact]
     public void Layout_and_schema_numbers() {
-        Assert.Equal(3, NocState.CurrentV);
-        Assert.Equal(4, CharacterSchema.Current);
+        Assert.Equal(4, NocState.CurrentV);
+        Assert.Equal(5, CharacterSchema.Current);
         Assert.Equal(2, CharacterSchema.V2);
         Assert.Equal(3, CharacterSchema.V3);
-        Assert.Equal(4, Default().CurrentVersion);
+        Assert.Equal(5, Default().CurrentVersion);
     }
 
     [Fact]
@@ -82,10 +82,10 @@ public class SkillStateSchemaTests {
     }
 
     [Fact]
-    public void A_legacy_save_goes_through_the_four_steps() {
+    public void A_legacy_save_goes_through_every_step() {
         var migrated = Default().Migrate(Sample(CharacterSchema.Legacy, null));
 
-        Assert.Equal(4, migrated.SchemaVersion);
+        Assert.Equal(CharacterSchema.Current, migrated.SchemaVersion);
         Assert.Equal(NocState.CurrentV, migrated.Noc!.V);
         Assert.Equal(NocState.LegacyRaceId, migrated.Noc.RaceId);
     }
@@ -95,7 +95,7 @@ public class SkillStateSchemaTests {
         var state = Sample(CharacterSchema.Current, new NocState(NocState.CurrentV, 3, 0, 5, RaceId: 1, ClassId: 0, Skills: [1000]));
 
         Assert.Equal(state.Noc, Default().Migrate(state).Noc);
-        Assert.Throws<CharacterSchemaTooNewException>(() => Default().Migrate(Sample(5, null)));
+        Assert.Throws<CharacterSchemaTooNewException>(() => Default().Migrate(Sample(6, null)));
     }
 
     [Fact]

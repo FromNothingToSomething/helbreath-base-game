@@ -42,7 +42,7 @@ public sealed class RaceMigrationTests : IDisposable {
 
     [Fact]
     public void The_default_chain_ends_at_the_current_schema() {
-        Assert.Equal(4, CharacterSchema.Current);
+        Assert.Equal(5, CharacterSchema.Current);
         Assert.Equal(CharacterSchema.Current, CharacterMigrator.CreateDefault(TestSupport.Progression()).CurrentVersion);
     }
 
