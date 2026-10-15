@@ -40,7 +40,7 @@ public class BuiltinHandlerTests {
         Assert.Equal(0.30, p.Stats.Get(StatId.ResistPhysical), 12);
         Assert.Equal(0.30, p.Stats.Get(StatId.ResistMagic), 12);
         Assert.Equal(1, p.ActiveBuffCount);
-        Assert.Equal(25, p.MitigateDamage(35, Server.Nocthemar.Core.DamageSchool.Physical));
+        Assert.Equal(21, p.MitigateDamage(35, Server.Nocthemar.Core.DamageSchool.Physical)); // 35 x 0.7 / 1.15 (Posture de Fer armor)
         Assert.False(p.TickBuffs(Now + 7999));
         Assert.True(p.TickBuffs(Now + 8000));
         Assert.Equal(0.0, p.Stats.Get(StatId.ResistPhysical));

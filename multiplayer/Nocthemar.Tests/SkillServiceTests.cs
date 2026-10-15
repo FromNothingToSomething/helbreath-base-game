@@ -83,7 +83,7 @@ public class SkillServiceTests {
         Refused(service.Learn(NocState.CreateDefault(100) with { Level = 10 }, 1000), "Choose a class first");
         Refused(service.Learn(Knight(10), 5), "Unknown skill");
         Refused(service.Learn(Knight(10), 1100), "another class");
-        Refused(service.Learn(Knight(10), 1001), "not available yet");
+        Refused(service.Learn(Knight(10), 1003), "not available yet");
         Refused(service.Learn(Knight(10, 1000), 1000), "already learned");
         Refused(service.Learn(Knight(1), 1000), "Not enough skill points");
         Refused(service.Learn(Knight(5), 1022), "Requires level 6");
@@ -95,7 +95,7 @@ public class SkillServiceTests {
     public void A_refusal_returns_the_unchanged_state() {
         var state = Knight(10, 1000);
 
-        var result = Service().Learn(state, 1001);
+        var result = Service().Learn(state, 1003);
 
         Assert.Same(state, result.State);
     }
@@ -204,12 +204,12 @@ public class SkillServiceTests {
 
     [Fact]
     public void Unknown_planned_foreign_and_duplicate_skills_are_dropped() {
-        var clean = Service().Sanitize(Knight(10, 1000, 1000, 5, 1001, 1100, 1010), out var warnings);
+        var clean = Service().Sanitize(Knight(10, 1000, 1000, 5, 1003, 1100, 1010), out var warnings);
 
         Assert.True(new[] { 1000, 1010 }.SequenceEqual(clean.Skills!));
         Assert.Equal(3, warnings.Count);
         Assert.Contains(warnings, w => w.Contains("skill 5") && w.Contains("catalog"));
-        Assert.Contains(warnings, w => w.Contains("skill 1001") && w.Contains("not available"));
+        Assert.Contains(warnings, w => w.Contains("skill 1003") && w.Contains("not available"));
         Assert.Contains(warnings, w => w.Contains("skill 1100") && w.Contains("another class"));
     }
 
