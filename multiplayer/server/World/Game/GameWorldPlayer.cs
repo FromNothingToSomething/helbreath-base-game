@@ -51,6 +51,8 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
     private readonly ProgressionService progressionService;
     /// <summary>Class and skill rules; null when the world runs without class content (no class, no skills).</summary>
     private readonly SkillService? skillService;
+    /// <summary>Mimicry rules; null when the world has no mimicry catalog.</summary>
+    private readonly MimicService? mimicService;
     /// <summary>Applies the learned skills to <see cref="stats"/> and the hook table; null together with <see cref="skillService"/>.</summary>
     private readonly SkillEffects? skillEffects;
     /// <summary>Race whose modifiers are currently in <see cref="stats"/> (source <c>ModifierSources.Race</c>); never null after construction.</summary>
@@ -237,6 +239,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         stats = new StatPipeline(progression, noc.Level);
         if (nocContent is not null) {
             skillService = nocContent.Rules;
+            mimicService = nocContent.Mimic;
             NocCatalog = nocContent.Catalog;
             skillEffects = new SkillEffects(stats, new SkillHookTable(nocContent.Handlers));
         }
@@ -450,6 +453,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         noc = state with { RaceId = race.Id };
         stats.SetLevel(noc.Level);
         ApplySkillEffects();
+        TrimMimicBar();
         maxHp = stats.MaxHp;
         hp = Math.Min(hp, maxHp);
         mana = Math.Clamp(noc.Mana, 0, stats.MaxMana);
@@ -654,12 +658,82 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
     }
 
     private const string NoClassContent = "Classes are not available.";
+    private const string NoMimicContent = "Mimicry is not available.";
+
+    /// <summary>Mimicry slots now: the level's slots plus the <see cref="StatId.MimicSlots"/> bonus; 0 when the world has no mimicry catalog.</summary>
+    public int MimicSlotLimit => mimicService is null ? 0 : mimicService.SlotsAt(noc.Level, (int)Math.Clamp(Math.Round(stats.Get(StatId.MimicSlots), MidpointRounding.AwayFromZero), 0, MimicService.MaxTotalSlots));
+
+    /// <summary>Learned mimicry abilities with their experience, ascending by id.</summary>
+    public IReadOnlyList<MimicEntry> LearnedMimics => noc.Mimics ?? [];
+
+    /// <summary>Ids of the equipped mimicry abilities, in bar order.</summary>
+    public IReadOnlyList<int> EquippedMimicIds => noc.MimicEquipped ?? [];
+
+    /// <summary>Level (1..max) of a learned mimicry ability; 0 when it is not learned.</summary>
+    public int MimicLevel(int abilityId) => mimicService?.LevelOf(noc, abilityId) ?? 0;
+
+    /// <summary>Forge, consume an essence: learns its ability. Returns null on success, otherwise the reason. The essence item is the caller's to remove.</summary>
+    public string? TryConsumeEssence(int abilityId) => ApplyMimicAction(service => service.Consume(CreateNocState(), abilityId));
+
+    /// <summary>Forge, fuse two essences: learns the recipe's ability. Returns null on success, otherwise the reason. Both essence items are the caller's to remove.</summary>
+    public string? TryFuseEssences(int essenceA, int essenceB) => ApplyMimicAction(service => service.Fuse(CreateNocState(), essenceA, essenceB));
+
+    /// <summary>Puts a learned ability on the mimicry bar. Returns null on success, otherwise the reason.</summary>
+    public string? TryEquipMimic(int abilityId) => ApplyMimicAction(service => service.Equip(CreateNocState(), abilityId, MimicSlotLimit));
+
+    /// <summary>Takes an ability off the mimicry bar. Returns null on success, otherwise the reason.</summary>
+    public string? TryUnequipMimic(int abilityId) => ApplyMimicAction(service => service.Unequip(CreateNocState(), abilityId));
+
+    /// <summary>Credits one successful cast of a learned ability (experience, persisted); anything else is ignored.</summary>
+    public void RegisterMimicCast(int abilityId) {
+        if (mimicService is null) {
+            return;
+        }
+
+        var next = mimicService.AddCastXp(noc, abilityId);
+        if (!ReferenceEquals(next, noc)) {
+            noc = next;
+            nocDirty = true;
+        }
+    }
+
+    private string? ApplyMimicAction(Func<MimicService, MimicActionResult> action) {
+        if (mimicService is null) {
+            return NoMimicContent;
+        }
+
+        var result = action(mimicService);
+        if (!result.Ok) {
+            return result.Refusal;
+        }
+
+        noc = result.State;
+        nocDirty = true;
+        return null;
+    }
+
+    /// <summary>Drops from the bar what no longer fits the slots (a bonus slot lost, a level that dropped); runs after the stats are derived.</summary>
+    private void TrimMimicBar() {
+        if (mimicService is null || noc.MimicEquipped is null) {
+            return;
+        }
+
+        noc = mimicService.Sanitize(noc, MimicSlotLimit, out var warnings);
+        LogMimicWarnings(warnings);
+    }
+
+    private void LogMimicWarnings(IReadOnlyList<string> warnings) {
+        foreach (var warning in warnings) {
+            Console.Error.WriteLine($"[Noc] Character '{characterName}': {warning}.");
+        }
+    }
 
     /// <summary>Re-derives max HP and mana after the skills changed; HP and mana are clamped to the new maxima, never raised.</summary>
     private void RefreshDerivedStats() {
         var oldMaxHp = maxHp;
         var oldHp = hp;
         ApplySkillEffects();
+        TrimMimicBar();
         maxHp = stats.MaxHp;
         hp = Math.Min(hp, maxHp);
         mana = Math.Clamp(mana, 0, stats.MaxMana);
@@ -858,6 +932,12 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
                 foreach (var warning in warnings) {
                     Console.Error.WriteLine($"[Noc] Character '{characterName}': {warning}.");
                 }
+            }
+
+            if (mimicService is not null) {
+                // Learned abilities are checked against the catalog and the class; the bar is trimmed to the real slots by ApplyNocState once the stats are known.
+                restored = mimicService.Sanitize(restored, MimicService.MaxTotalSlots, out var mimicWarnings);
+                LogMimicWarnings(mimicWarnings);
             }
 
             ApplyNocState(restored);

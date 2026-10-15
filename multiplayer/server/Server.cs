@@ -41,8 +41,9 @@ var races = await RaceConfig.LoadAsync();
 var classes = await ClassConfig.LoadAsync();
 var classSkills = await SkillConfig.LoadAsync(classes);
 classes.ValidateRaces(races);
+var mimicConfig = await MimicConfig.LoadAsync(classes);
 // Skill handlers are registered here; NocContent fails fast when a ready skill names a handler that is not.
-var nocContent = new NocContent(classes, classSkills, progression, BuiltinSkillHandlers.Register(new SkillHandlerRegistry()));
+var nocContent = new NocContent(classes, classSkills, progression, BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), mimicConfig);
 var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");
 // Fails fast on an unusable persistence.provider, before any world worker starts.
 var characterStore = CharacterStoreFactory.Create(settings.Persistence, charsDirectory, progression);
@@ -61,6 +62,10 @@ var spellsById = Config.BuildSpellCatalog(spellsConfig);
 Config.ValidateMonsterSpellReferences(monstersById, spellsById);
 var itemsConfig = await Config.LoadItemsConfig();
 var itemsById = Config.BuildItemCatalog(itemsConfig);
+// Mimic.json is loaded early (the world registry needs it) and checked here, once the catalogs it points to exist.
+mimicConfig.ValidateMonsters(monstersById.ToDictionary(pair => pair.Key, pair => pair.Value.Name));
+mimicConfig.ValidateEssenceItems(itemsById.Keys.ToArray());
+mimicConfig.ValidateSpells(spellsById.Keys.ToArray());
 var npcsConfig = await Config.LoadNpcsConfig();
 var npcsById = Config.BuildNpcCatalog(npcsConfig);
 var mapsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Config", "maps");

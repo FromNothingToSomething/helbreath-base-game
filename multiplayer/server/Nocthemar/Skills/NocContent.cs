@@ -10,7 +10,7 @@ namespace Server.Nocthemar.Skills;
 /// Passing none (null) to a world or a player keeps the game exactly as it was before classes existed (no class, no skills, nothing sent).
 /// </summary>
 public sealed class NocContent {
-    public NocContent(ClassConfig classes, SkillConfig skills, ProgressionConfig progression, SkillHandlerRegistry handlers) {
+    public NocContent(ClassConfig classes, SkillConfig skills, ProgressionConfig progression, SkillHandlerRegistry handlers, MimicConfig? mimic = null) {
         ArgumentNullException.ThrowIfNull(classes);
         ArgumentNullException.ThrowIfNull(skills);
         ArgumentNullException.ThrowIfNull(progression);
@@ -20,12 +20,16 @@ public sealed class NocContent {
         Skills = skills;
         Rules = new SkillService(classes, skills, progression);
         Catalog = NocCatalogBuilder.Build(classes, skills, Rules);
+        Mimic = mimic is null ? null : new MimicService(mimic);
     }
 
     public ClassConfig Classes { get; }
     public SkillConfig Skills { get; }
     public SkillService Rules { get; }
     public SkillHandlerRegistry Handlers { get; }
+
+    /// <summary>Mimicry rules; null when the content has no mimicry catalog (no ability can be learned).</summary>
+    public MimicService? Mimic { get; }
 
     /// <summary>The wire catalog, built once; shared by every <c>InitialState</c> (read-only: never modify it).</summary>
     public NocCatalog Catalog { get; }

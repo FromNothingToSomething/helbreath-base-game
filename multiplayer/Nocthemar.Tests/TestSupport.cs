@@ -23,7 +23,7 @@ internal static class TestSupport {
 
     /// <summary>The shipped classes and skills with the given handlers (none by default: every shipped skill is a catalog entry or a stat passive).</summary>
     public static NocContent ShippedContent(SkillHandlerRegistry? handlers = null) =>
-        new(ShippedClasses(), ShippedSkills(), Progression(), handlers ?? BuiltinSkillHandlers.Register(new SkillHandlerRegistry()));
+        new(ShippedClasses(), ShippedSkills(), Progression(), handlers ?? BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), ShippedMimic());
 
     /// <summary>Loads a NOCTHEMAR block into a player the way a login does.</summary>
     public static void Restore(GameWorldPlayer player, NocState noc) {
