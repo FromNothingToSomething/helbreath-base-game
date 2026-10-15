@@ -2922,7 +2922,8 @@ export class Player extends GameObject {
     }
 
     private resolveSpellName(spellId: number): string | undefined {
-        return getNetworkManager(this.scene.game)?.getSpellById(spellId)?.name;
+        const manager = getNetworkManager(this.scene.game);
+        return manager?.getSpellById(spellId)?.name ?? manager?.getMimicAbilityName(spellId);
     }
 
     private emitCastStarted(spellId: number): void {

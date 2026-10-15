@@ -71,5 +71,8 @@ public static class NocCatalogBuilder {
 
         catalog.MimicXpThresholds.AddRange(mimic.Xp.Thresholds.Select(t => (long)t));
         catalog.MimicPowerPerLevel = mimic.Xp.PowerPerLevel;
+        catalog.MimicSlotsFirst = mimic.Slots.First;
+        catalog.MimicLevelsPerSlot = mimic.Slots.LevelsPerSlot;
+        catalog.MimicSlotsMax = mimic.Slots.Max;
     }
 }

@@ -26,6 +26,19 @@ export interface NocViewModel {
     skillPoints: number;
     /** Ids of the learned skills, ascending. */
     skills: number[];
+    /** Learned mimicry abilities, ascending by id (empty without mimicry). */
+    mimics: MimicStateView[];
+    /** Equipped mimicry abilities in bar order. */
+    mimicEquipped: number[];
+    /** Mimicry bar slots available now; 0 without mimicry. */
+    mimicSlots: number;
+}
+
+export interface MimicStateView {
+    id: number;
+    /** Total experience of the ability. */
+    xp: number;
+    level: number;
 }
 
 const clamp01 = (value: number): number => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0);
@@ -50,5 +63,8 @@ export function toNocViewModel(snapshot: NocSnapshot): NocViewModel {
         classId: snapshot.classId ?? null,
         skillPoints: snapshot.skillPoints,
         skills: [...snapshot.skills],
+        mimics: (snapshot.mimics ?? []).map((m) => ({ id: m.id, xp: Number(m.xp), level: m.level })),
+        mimicEquipped: [...(snapshot.mimicEquipped ?? [])],
+        mimicSlots: snapshot.mimicSlots ?? 0,
     };
 }

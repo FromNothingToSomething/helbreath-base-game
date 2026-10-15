@@ -71,6 +71,17 @@ public class MimicProtocolTests {
     }
 
     [Fact]
+    public void The_slot_table_is_in_the_catalog_and_matches_the_server_rule() {
+        var catalog = Catalog();
+        var slots = TestSupport.ShippedMimic().Slots;
+
+        Assert.Equal((slots.First, slots.LevelsPerSlot, slots.Max), (catalog.MimicSlotsFirst, catalog.MimicLevelsPerSlot, catalog.MimicSlotsMax));
+        foreach (var level in new[] { 1, 10, 11, 25, 81, 100 }) {
+            Assert.Equal(slots.SlotsAt(level), Math.Min(catalog.MimicSlotsMax, catalog.MimicSlotsFirst + (level - 1) / catalog.MimicLevelsPerSlot));
+        }
+    }
+
+    [Fact]
     public void A_catalog_without_mimicry_has_none_of_it() {
         var content = TestSupport.ShippedContent();
 
@@ -80,6 +91,7 @@ public class MimicProtocolTests {
         Assert.Empty(catalog.Fusions);
         Assert.Empty(catalog.MimicXpThresholds);
         Assert.Equal(0.0, catalog.MimicPowerPerLevel);
+        Assert.Equal((0, 0, 0), (catalog.MimicSlotsFirst, catalog.MimicLevelsPerSlot, catalog.MimicSlotsMax));
         Assert.Equal(content.Catalog.Classes.Count, catalog.Classes.Count);
     }
 

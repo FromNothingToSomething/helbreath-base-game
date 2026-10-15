@@ -422,6 +422,8 @@ export class NetworkManager {
     /** Catalog id → display name from InitialState npc_directory (client maps id to sprite locally). */
     private npcDirectoryByCatalogId = new Map<number, string>();
     private spells: SpellEntry[] = [];
+    /** Mimicry ability names by id, from the catalog of the session (cast text above the caster). */
+    private mimicNames = new Map<number, string>();
     private authenticateCharacterName = '';
     private authenticateCreation: NocCharacterCreation | undefined;
     private hasSentAuthentication = false;
@@ -919,6 +921,26 @@ export class NetworkManager {
     /** Debug only: the server ignores it unless Settings.json nocthemar.debug is true. Quantity 1..100. */
     public sendNocCreateItemRequest(itemId: number, quantity: number): void {
         this.sendNocPayload({ $case: 'nocCreateItemRequest', value: { itemId, quantity } });
+    }
+
+    /** Soul Forge: learns the ability of an essence from the bag. Refused by the server (NocActionRefused) out of the forge's range or when a rule is not met. */
+    public sendNocForgeConsumeRequest(abilityId: number): void {
+        this.sendNocPayload({ $case: 'nocForgeConsumeRequest', value: { abilityId } });
+    }
+
+    /** Soul Forge: fuses two essences from the bag into the ability of their recipe. */
+    public sendNocForgeFuseRequest(abilityA: number, abilityB: number): void {
+        this.sendNocPayload({ $case: 'nocForgeFuseRequest', value: { abilityA, abilityB } });
+    }
+
+    /** Puts a learned ability on the mimicry bar (`equipped` true) or takes it off; needs no Soul Forge. */
+    public sendNocMimicEquipRequest(abilityId: number, equipped: boolean): void {
+        this.sendNocPayload({ $case: 'nocMimicEquipRequest', value: { abilityId, equipped } });
+    }
+
+    /** Name of a mimicry ability (catalog of the session); undefined for an id this session does not know. */
+    public getMimicAbilityName(abilityId: number): string | undefined {
+        return this.mimicNames.get(abilityId);
     }
 
     /** Chooses the class once; refused by the server (NocActionRefused) when one is already chosen. */
@@ -1420,7 +1442,9 @@ export class NetworkManager {
         this.selfPlayerId = String(data.playerId);
         this.handleNocSnapshot(data.noc);
         if (data.nocCatalog) {
-            EventBus.emit(NOC_CATALOG_RECEIVED, toCatalogModel(data.nocCatalog));
+            const catalog = toCatalogModel(data.nocCatalog);
+            this.mimicNames = new Map(catalog.mimics.map((m) => [m.id, m.name]));
+            EventBus.emit(NOC_CATALOG_RECEIVED, catalog);
         }
         this.npcDirectoryByCatalogId.clear();
         for (const row of data.npcDirectory) {
