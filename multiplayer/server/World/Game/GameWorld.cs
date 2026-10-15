@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using Mmorpg.Network;
 using Server;
 using Server.Helpers;
+using Server.Nocthemar.Core;
 using Server.Nocthemar.Data;
 using Server.Nocthemar.Net;
 using Server.Nocthemar.Skills;
@@ -176,6 +177,12 @@ public sealed class GameWorld : IWorkerWorld {
     private readonly NocDispatcher nocDispatcher;
     /// <summary>Class and skill content given to every player of this world; null = classes disabled.</summary>
     private readonly NocContent? nocContent;
+    /// <summary>Mythic essences only drop in a world flagged <c>raid</c> in GameWorlds.json.</summary>
+    private readonly bool raid;
+    /// <summary>Rolls essence drops; null when the world has no mimicry catalog.</summary>
+    private readonly EssenceDropper? essenceDropper;
+    /// <summary>Ground items that are essence orbs (dropped by a monster) and still need to be captured.</summary>
+    private readonly EssenceOrbRegistry essenceOrbs = new();
     private readonly Dictionary<long, GameWorldMonster> monstersByMonsterId = new();
     private readonly Dictionary<long, GameWorldNPC> npcsByNpcId = new();
     /// <summary>Diagnostics: sum of per-loop <see cref="TimeSpan.TotalMilliseconds"/> since last 1s log; only on worker thread.</summary>
@@ -206,7 +213,9 @@ public sealed class GameWorld : IWorkerWorld {
         IReadOnlyList<GameWorldDwellAreaConfig>? dwellAreas = null,
         IReadOnlyList<GameWorldTeleportSet>? teleportLocs = null,
         IReadOnlyList<GameWorldNpcPlacementConfig>? initialNpcs = null,
-        NocContent? nocContent = null) {
+        NocContent? nocContent = null,
+        bool raid = false,
+        Func<double>? essenceRoll = null) {
         if (string.IsNullOrWhiteSpace(id)) {
             throw new ArgumentException("Game world id is required.", nameof(id));
         }
@@ -223,6 +232,11 @@ public sealed class GameWorld : IWorkerWorld {
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
         this.races = races ?? throw new ArgumentNullException(nameof(races));
         this.nocContent = nocContent;
+        this.raid = raid;
+        if (nocContent?.Mimic is { } mimicService) {
+            essenceDropper = new EssenceDropper(mimicService.Config, essenceRoll ?? Random.Shared.NextDouble);
+        }
+
         nocDispatcher = new NocDispatcher(settings.Nocthemar?.Debug ?? false);
         this.monsterCatalog = monsterCatalog;
         this.monstersById = monstersById;
@@ -964,11 +978,28 @@ public sealed class GameWorld : IWorkerWorld {
             return;
         }
 
+        // An essence orb (not an essence a player dropped) is captured with an Essence Vial or a capture passive; otherwise it stays on the ground.
+        var capture = EssenceCapture.None;
+        if (groundStateTracker.TryPeekTopDroppedItem(player.PosX, player.PosY, out var topItem) && topItem is not null && essenceOrbs.IsOrb(topItem.ItemUid)) {
+            capture = player.PlanEssenceCapture();
+            if (capture == EssenceCapture.Refused) {
+                NetworkManager.SendToPlayer(player, NetworkManager.CreateNocActionRefused("You need an Essence Vial to capture this essence."));
+                return;
+            }
+        }
+
         if (!groundStateTracker.TryRemoveTopDroppedItem(player.PosX, player.PosY, out var removedItem, out var revealedTopItem) || removedItem is null) {
             return;
         }
         if (!Inventory.TryAddGroundItemToBag(gameWorldRef, player, removedItem)) {
             return;
+        }
+
+        if (capture != EssenceCapture.None) {
+            essenceOrbs.Release(removedItem.ItemUid);
+            if (capture == EssenceCapture.UseVial) {
+                Inventory.TryRemoveBagItemsById(gameWorldRef, player, MimicIds.EssenceVialItemId, 1);
+            }
         }
 
         GroundStateVisibility.BroadcastGroundItemTopStateChanged(gameWorldRef, removedItem, revealedTopItem);
@@ -1244,6 +1275,23 @@ public sealed class GameWorld : IWorkerWorld {
         monstersById.TryGetValue(monster.CatalogMonsterId, out var monsterConfig);
         killer.RegisterKill();
         killer.GrantKillXp(progression.ResolveMonsterXp(monsterConfig?.Xp));
+        DropEssence(monster);
+    }
+
+    /// <summary>Leaves the essence orb of the monster's ability on its cell, when the dice and the world (raid) allow it. The orb must then be captured to be picked up.</summary>
+    private void DropEssence(GameWorldMonster monster) {
+        var ability = essenceDropper?.Roll(monster.CatalogMonsterId, raid);
+        if (ability?.EssenceItemId is not int essenceItemId || !itemsById.ContainsKey(essenceItemId)) {
+            return;
+        }
+
+        var orb = new InventoryItemState(essenceItemId, InventoryManager.CreateItemUid(), bagX: null, bagY: null, quantity: 1, bagZIndex: 0, effectOverrides: null);
+        if (!groundStateTracker.TryAddDroppedItem(orb, monster.PosX, monster.PosY, out var previousTopItem, out var addedItem) || addedItem is null) {
+            return;
+        }
+
+        essenceOrbs.Mark(addedItem.ItemUid);
+        GroundStateVisibility.BroadcastGroundItemTopStateChanged(gameWorldRef, previousTopItem, addedItem);
     }
 
     public bool TryGetPlayerBySessionId(Guid sessionId, out GameWorldPlayer player) {

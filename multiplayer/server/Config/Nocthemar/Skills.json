@@ -916,7 +916,14 @@
       "kind": "passive",
       "cost": 1,
       "desc": "+5% absorption de capacités",
-      "status": "planned"
+      "status": "ready",
+      "modifiers": [
+        {
+          "stat": "EssenceCapture",
+          "kind": "Flat",
+          "value": 1
+        }
+      ]
     },
     {
       "id": 1221,

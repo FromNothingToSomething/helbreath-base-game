@@ -369,6 +369,17 @@ public sealed class GroundStateTracker {
         return true;
     }
 
+    /// <summary>The top-most item of a cell without removing it.</summary>
+    public bool TryPeekTopDroppedItem(int posX, int posY, out GroundItemState? topItem) {
+        topItem = null;
+        if (!IsWithinBounds(posX, posY)) {
+            return false;
+        }
+
+        var stack = droppedItemsByCell[GetIndex(posX, posY)];
+        return stack is not null && stack.TryPeekNewest(out topItem);
+    }
+
     public bool TryRemoveTopDroppedItem(int posX, int posY, out GroundItemState? removedItem, out GroundItemState? revealedTopItem) {
         removedItem = null;
         revealedTopItem = null;

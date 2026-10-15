@@ -114,6 +114,7 @@ READY = {
  (0, 2, 2): [mod("MimicDurationMult", A, 0.15)],
  (1, 0, 0): [mod("MagicDamageMult", A, 0.10)],
  (2, 0, 0): [mod("CritDamageMult", A, 0.10)],
+ (2, 2, 0): [mod("EssenceCapture", F, 1)],
  (2, 1, 0): [mod("ArmorMult", A, 0.10)],
  (2, 1, 4): [mod("ResistPhysical", F, 0.20)],
  (2, 1, 6): [mod("MaxHp", A, 0.15)],

@@ -14,7 +14,7 @@ public class StatIdTests {
         ["MagicDamageMult"] = 4, ["ArmorMult"] = 5, ["ResistPhysical"] = 6, ["ResistMagic"] = 7, ["ResistCurse"] = 8,
         ["ResistDeath"] = 9, ["CritDamageMult"] = 10, ["MoveSpeedMult"] = 11, ["HealReceivedMult"] = 12,
         ["XpGainMult"] = 13, ["ManaCostMult"] = 14, ["MimicDurationMult"] = 15, ["CritChance"] = 16, ["HpRegen"] = 17,
-        ["MimicSlots"] = 18, ["MimicPowerMult"] = 19, ["MimicCostMult"] = 20,
+        ["MimicSlots"] = 18, ["MimicPowerMult"] = 19, ["MimicCostMult"] = 20, ["EssenceCapture"] = 21,
     };
 
     [Fact]

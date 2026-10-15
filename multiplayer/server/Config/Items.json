@@ -1890,5 +1890,11 @@
     "name": "Essence: Chant de la fin",
     "itemType": "misc",
     "stackable": true
+  },
+  {
+    "id": 5100,
+    "name": "Fiole d'Essence",
+    "itemType": "misc",
+    "stackable": true
   }
 ]

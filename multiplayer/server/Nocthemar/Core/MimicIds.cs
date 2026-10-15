@@ -17,6 +17,9 @@ public static class MimicIds {
     /// <summary>Items.json id of the essence of the first monster ability.</summary>
     public const int EssenceItemBase = 5000;
 
+    /// <summary>Items.json id of the Essence Vial: one is consumed to capture an essence orb (unless a capture passive does it).</summary>
+    public const int EssenceVialItemId = 5100;
+
     public static bool IsMimic(int id) => id >= Base && id < End;
 
     public static bool IsMonsterAbility(int id) => id >= Base && id < FusionBase;

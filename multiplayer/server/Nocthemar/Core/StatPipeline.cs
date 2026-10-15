@@ -47,11 +47,13 @@ public enum StatId : byte {
     MimicPowerMult = 19,
     // consumer: module 4 (T63, mana cost of mimicry abilities)
     MimicCostMult = 20,
+    // consumer: module 4 (T62, 1 = the character captures essences without an Essence Vial; base 0, Flat modifiers)
+    EssenceCapture = 21,
 }
 
 /// <summary>Number of <see cref="StatId"/> members (ids are contiguous from 0); keep equal to the last id + 1.</summary>
 public static class StatIds {
-    public const int Count = 21;
+    public const int Count = 22;
 }
 
 /// <summary>How a <see cref="StatModifier"/> combines with the base value.</summary>

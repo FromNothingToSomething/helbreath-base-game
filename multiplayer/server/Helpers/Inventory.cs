@@ -95,6 +95,17 @@ public static class Inventory {
         return true;
     }
 
+    /// <summary>Removes <paramref name="quantity"/> of an item id from the bag (all or nothing) and sends the resulting self delta.</summary>
+    public static bool TryRemoveBagItemsById(GameWorldRef wr, GameWorldPlayer player, int itemId, int quantity) {
+        ArgumentNullException.ThrowIfNull(player);
+        if (!player.InventoryManager.TryRemoveItemsById(itemId, quantity, out var result)) {
+            return false;
+        }
+
+        ApplyInventoryMutation(wr, player, result);
+        return true;
+    }
+
     /// <summary>Adds one authoritative ground item into the player's bag, applying normal stack-merge rules and sending the resulting self delta.</summary>
     public static bool TryAddGroundItemToBag(GameWorldRef wr, GameWorldPlayer player, GroundItemState groundItem) {
         ArgumentNullException.ThrowIfNull(player);

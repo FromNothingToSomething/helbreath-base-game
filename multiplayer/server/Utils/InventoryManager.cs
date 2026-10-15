@@ -419,6 +419,50 @@ public sealed class InventoryManager {
         return true;
     }
 
+    /// <summary>Total quantity of an item id across the bag (equipped items do not count).</summary>
+    public int CountItem(int itemId) {
+        long total = 0;
+        for (var i = 0; i < bagItems.Count; i++) {
+            if (bagItems[i].ItemId == itemId) {
+                total += bagItems[i].Quantity;
+            }
+        }
+
+        return (int)Math.Min(int.MaxValue, total);
+    }
+
+    /// <summary>
+    /// Removes <paramref name="quantity"/> of an item id from the bag, across stacks: all or nothing.
+    /// A stack that still has some left is reported in <see cref="InventoryMutationResult.AddedToBag"/> with its new quantity, an exhausted one in <see cref="InventoryMutationResult.RemovedFromBagItemUids"/>.
+    /// </summary>
+    public bool TryRemoveItemsById(int itemId, int quantity, out InventoryMutationResult result) {
+        result = new InventoryMutationResult();
+        if (quantity <= 0 || CountItem(itemId) < quantity) {
+            return false;
+        }
+
+        var left = quantity;
+        for (var i = bagItems.Count - 1; i >= 0 && left > 0; i--) {
+            var item = bagItems[i];
+            if (item.ItemId != itemId) {
+                continue;
+            }
+
+            if (item.Quantity > left) {
+                item.Quantity -= left;
+                result.AddedToBag.Add(item.Clone());
+                left = 0;
+            } else {
+                left -= item.Quantity;
+                bagItems.RemoveAt(i);
+                result.RemovedFromBagItemUids.Add(item.ItemUid);
+            }
+        }
+
+        NormalizeBagZIndices();
+        return true;
+    }
+
     /// <summary>Adds a ground item back into the bag, preserving quantity/effects and merging with existing stackable rows by item id.</summary>
     public bool TryAddGroundItemToBag(GroundItemState groundItem, out InventoryMutationResult result) {
         ArgumentNullException.ThrowIfNull(groundItem);
@@ -490,7 +534,7 @@ public sealed class InventoryManager {
         result.AddedToBag.Add(equipped.Clone());
     }
 
-    private static long CreateItemUid() {
+    internal static long CreateItemUid() {
         return BitConverter.ToInt64(Guid.NewGuid().ToByteArray(), 0);
     }
 

@@ -55,7 +55,9 @@ public class MimicIdsTests {
         Assert.Equal(18, (int)StatId.MimicSlots);
         Assert.Equal(19, (int)StatId.MimicPowerMult);
         Assert.Equal(20, (int)StatId.MimicCostMult);
-        Assert.Equal(21, StatIds.Count);
+        Assert.Equal(21, (int)StatId.EssenceCapture);
+        Assert.Equal(22, StatIds.Count);
+        Assert.Equal(0.0, p.Get(StatId.EssenceCapture));
         Assert.Equal(0.0, p.Get(StatId.MimicSlots));
         Assert.Equal(1.0, p.Get(StatId.MimicPowerMult));
         Assert.Equal(1.0, p.Get(StatId.MimicCostMult));
