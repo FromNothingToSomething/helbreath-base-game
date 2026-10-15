@@ -241,6 +241,31 @@ message NocCatalog {
   repeated NocQuestInfo quests = 12;
   // Quests a character can carry at the same time.
   int32 quest_max_active = 13;
+  // Nocthemar zones (Zones.json); empty without zones.
+  repeated NocZoneInfo zones = 14;
+}
+
+// A zone is a game world of GameWorlds.json with the same id.
+message NocZoneInfo {
+  string id = 1;
+  string name = 2;
+  // Recommended level range (display only).
+  int32 level_min = 3;
+  int32 level_max = 4;
+  // Level needed to enter by a portal: below it the server answers NocActionRefused and does not move the player.
+  int32 min_level = 5;
+  // Faction of the zone's headquarters or control; absent when none.
+  optional int32 faction_id = 6;
+  repeated NocZonePoi pois = 7;
+}
+
+message NocZonePoi {
+  string key = 1;
+  string name = 2;
+  // 0 portal, 1 npc, 2 landmark.
+  int32 kind = 3;
+  int32 x = 4;
+  int32 y = 5;
 }
 
 message NocQuestInfo {

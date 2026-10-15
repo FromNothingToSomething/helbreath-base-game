@@ -6,7 +6,7 @@ namespace Server.Nocthemar.Net;
 
 /// <summary>Builds the wire form of the class and skill catalogs (<see cref="NocCatalog"/>), sent once per session in <c>InitialState</c>.</summary>
 public static class NocCatalogBuilder {
-    public static NocCatalog Build(ClassConfig classes, SkillConfig skills, SkillService rules, MimicConfig? mimic = null, FactionConfig? factions = null, QuestConfig? quests = null) {
+    public static NocCatalog Build(ClassConfig classes, SkillConfig skills, SkillService rules, MimicConfig? mimic = null, FactionConfig? factions = null, QuestConfig? quests = null, ZoneConfig? zones = null) {
         ArgumentNullException.ThrowIfNull(classes);
         ArgumentNullException.ThrowIfNull(skills);
         ArgumentNullException.ThrowIfNull(rules);
@@ -50,7 +50,26 @@ public static class NocCatalogBuilder {
             AddQuests(catalog, quests);
         }
 
+        if (zones is not null) {
+            AddZones(catalog, zones);
+        }
+
         return catalog;
+    }
+
+    private static void AddZones(NocCatalog catalog, ZoneConfig zones) {
+        foreach (var zone in zones.Zones) {
+            var info = new NocZoneInfo { Id = zone.Id, Name = zone.Name, LevelMin = zone.LevelMin, LevelMax = zone.LevelMax, MinLevel = zone.MinLevel };
+            if (zone.FactionId is int factionId) {
+                info.FactionId = factionId;
+            }
+
+            foreach (var poi in zone.Pois) {
+                info.Pois.Add(new NocZonePoi { Key = poi.Key, Name = poi.Name, Kind = (int)poi.Kind, X = poi.X, Y = poi.Y });
+            }
+
+            catalog.Zones.Add(info);
+        }
     }
 
     private static void AddQuests(NocCatalog catalog, QuestConfig quests) {
