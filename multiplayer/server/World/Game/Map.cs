@@ -61,7 +61,7 @@ public static class Map {
     }
 
     /// <summary>Token-scans the 256-byte ASCII header for MAPSIZEX, MAPSIZEY, and TILESIZE key=value triples.</summary>
-    private static void ParseHeader(string headerText, out int sizeX, out int sizeY, out int tileSize) {
+    internal static void ParseHeader(string headerText, out int sizeX, out int sizeY, out int tileSize) {
         sizeX = 0;
         sizeY = 0;
         tileSize = 0;
