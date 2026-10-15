@@ -5,6 +5,10 @@ import { RpgButton } from '../components/RpgButton';
 import { nocStore, toggleNocPanel } from '../store/Noc.store';
 import { toggleMimicPanel } from '../store/Mimic.store';
 import { MIMIC_PURPLE_LIGHT } from '../mimicTheme';
+import { toggleFactionPanel, toggleQuestLog } from '../store/Faction.store';
+import { factionColor, factionColorLight } from '../factionTheme';
+import { reputationOf } from '../../utils/FactionView';
+import { ReputationBarView } from './FactionDialog';
 
 interface NocHudDialogProps {
     position: { x: number; y: number };
@@ -49,6 +53,7 @@ function Bar({ ratio, color, label }: { ratio: number; color: string; label: str
 export function NocHudDialog({ position, zIndex, onBringToFront, onDebugGrantXp }: NocHudDialogProps) {
     const view = useStore(nocStore, (state) => state.view);
     const hasCatalog = useStore(nocStore, (state) => state.catalog !== null);
+    const factionCatalog = useStore(nocStore, (state) => (state.catalog?.reputationRules ? state.catalog : null));
     const hasMimicry = useStore(nocStore, (state) => (state.catalog?.mimics.length ?? 0) > 0);
     if (!view) {
         return null;
@@ -84,6 +89,26 @@ export function NocHudDialog({ position, zIndex, onBringToFront, onDebugGrantXp 
                 {hasCatalog && (
                     <RpgButton variant="compact" onClick={toggleNocPanel}>
                         {view.classId === null ? 'Choose a class' : view.skillPoints > 0 ? `Skills (${view.skillPoints})` : 'Skills'}
+                    </RpgButton>
+                )}
+                {factionCatalog && view.factionId !== null && factionCatalog.reputationRules && (
+                    <div style={{ color: factionColorLight(view.factionId), fontSize: 11 }}>
+                        {factionCatalog.factionsById.get(view.factionId)?.name ?? 'Faction'}
+                        <ReputationBarView
+                            rules={factionCatalog.reputationRules}
+                            value={reputationOf(view.reputations, view.factionId)}
+                            factionId={view.factionId}
+                        />
+                    </div>
+                )}
+                {factionCatalog && (
+                    <RpgButton variant="compact" onClick={toggleFactionPanel} style={{ borderColor: factionColor(view.factionId) }}>
+                        {view.factionId === null ? 'Faction' : 'Faction master'}
+                    </RpgButton>
+                )}
+                {factionCatalog && view.factionId !== null && (
+                    <RpgButton variant="compact" onClick={toggleQuestLog}>
+                        {view.quests.length > 0 ? `Quests (${view.quests.length})` : 'Quests'}
                     </RpgButton>
                 )}
                 {hasMimicry && (

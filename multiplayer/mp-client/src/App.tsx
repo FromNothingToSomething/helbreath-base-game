@@ -28,6 +28,8 @@ import { NocHudDialog } from './ui/dialogs/NocHudDialog';
 import { NocSkillsDialog } from './ui/dialogs/NocSkillsDialog';
 import { MimicBarDialog } from './ui/dialogs/MimicBarDialog';
 import { SoulForgeDialog } from './ui/dialogs/SoulForgeDialog';
+import { FactionDialog } from './ui/dialogs/FactionDialog';
+import { QuestLogDialog } from './ui/dialogs/QuestLogDialog';
 import { ConnectingDialog } from './ui/dialogs/ConnectingDialog';
 import { ServerMessageDialog } from './ui/dialogs/ServerMessageDialog';
 import { ChatDialog } from './ui/dialogs/ChatDialog';
@@ -167,6 +169,32 @@ function App()
         y: typeof window === 'undefined' ? 0 : Math.max(0, window.innerHeight - 100),
     };
     const soulForgePosition = { x: 40, y: 90 };
+    const factionPanelPosition = { x: 40, y: 120 };
+    const questLogPosition = { x: 520, y: 120 };
+    const handleFactionJoin = (factionId: number) => {
+        const game = phaserRef.current?.game;
+        if (game) {
+            getNetworkManager(game)?.sendNocFactionJoinRequest(factionId);
+        }
+    };
+    const handleQuestAccept = (questId: number) => {
+        const game = phaserRef.current?.game;
+        if (game) {
+            getNetworkManager(game)?.sendNocQuestAcceptRequest(questId);
+        }
+    };
+    const handleQuestTurnIn = (questId: number) => {
+        const game = phaserRef.current?.game;
+        if (game) {
+            getNetworkManager(game)?.sendNocQuestTurnInRequest(questId);
+        }
+    };
+    const handleQuestAbandon = (questId: number) => {
+        const game = phaserRef.current?.game;
+        if (game) {
+            getNetworkManager(game)?.sendNocQuestAbandonRequest(questId);
+        }
+    };
     const handleMimicConsume = (abilityId: number) => {
         const game = phaserRef.current?.game;
         if (game) {
@@ -1011,6 +1039,20 @@ function App()
                         onFuse={handleMimicFuse}
                         onEquip={handleMimicEquip}
                     />
+                )}
+
+                {showNocHud && (
+                    <FactionDialog
+                        position={factionPanelPosition}
+                        zIndex={NOC_HUD_Z_INDEX + 2}
+                        onJoin={handleFactionJoin}
+                        onAccept={handleQuestAccept}
+                        onTurnIn={handleQuestTurnIn}
+                    />
+                )}
+
+                {showNocHud && (
+                    <QuestLogDialog position={questLogPosition} zIndex={NOC_HUD_Z_INDEX + 2} onAbandon={handleQuestAbandon} />
                 )}
 
                 {showDeathDialog && (

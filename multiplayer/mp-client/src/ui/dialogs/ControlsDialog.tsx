@@ -1,6 +1,11 @@
 import { useStore } from '@tanstack/react-store';
 import { DraggableDialog } from './DraggableDialog';
+import { useEffect, useState } from 'react';
 import { RpgButton } from '../components/RpgButton';
+import { RpgCheckbox } from '../components/RpgCheckbox';
+import { EventBus } from '../../game/EventBus';
+import { PLAYER_TAG_OPTIONS_CHANGED } from '../../constants/EventNames';
+import { getTagOptions, setTagOptions, type PlayerTagOptions } from '../../utils/PlayerTagState';
 import type { IRefPhaserGame } from '../../PhaserGame';
 import { togglePhaserFullscreen } from '../../utils/RendererUtils';
 import { toggleMapDialog } from '../store/MapDialog.store';
@@ -38,6 +43,15 @@ export function ControlsDialog({
     const logoutSecondsRemaining = useStore(controlsDialogStore, (state) => state.logoutSecondsRemaining);
     const syncWithServer = useStore(serverDialogStore, (state) => state.syncWithServer);
 
+    const [tagOptions, setTagOptionsState] = useState<PlayerTagOptions>(getTagOptions());
+    useEffect(() => {
+        const handler = (next: PlayerTagOptions) => setTagOptionsState(next);
+        EventBus.on(PLAYER_TAG_OPTIONS_CHANGED, handler);
+        return () => {
+            EventBus.off(PLAYER_TAG_OPTIONS_CHANGED, handler);
+        };
+    }, []);
+
     const toggleFullscreen = () => {
         togglePhaserFullscreen(phaserRef.current?.game);
     };
@@ -66,6 +80,12 @@ export function ControlsDialog({
                 <RpgButton onClick={toggleFullscreen}>
                     {isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                 </RpgButton>
+            </div>
+            <div>
+                <RpgCheckbox id="tag-show-names" label="Player names" checked={tagOptions.showNames} onCheckedChange={(v) => setTagOptions({ showNames: v })} />
+            </div>
+            <div>
+                <RpgCheckbox id="tag-show-faction" label="Player factions" checked={tagOptions.showFaction} onCheckedChange={(v) => setTagOptions({ showFaction: v })} />
             </div>
             <div>
                 <RpgButton onClick={togglePlayerDialog}>
