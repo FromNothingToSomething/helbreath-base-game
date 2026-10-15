@@ -14,7 +14,8 @@
     "provider": "json"
   },
   "nocthemar": {
-    "debug": false
+    "debug": false,
+    "pvpMode": "legacy"
   },
   "threads": {
     "gameWorldWorkers": 1,

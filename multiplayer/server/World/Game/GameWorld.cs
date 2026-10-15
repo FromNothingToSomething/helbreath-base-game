@@ -175,6 +175,7 @@ public sealed class GameWorld : IWorkerWorld {
     private readonly ProgressionConfig progression;
     private readonly RaceConfig races;
     private readonly NocDispatcher nocDispatcher;
+    private readonly PvpPolicy pvpPolicy;
     /// <summary>Class and skill content given to every player of this world; null = classes disabled.</summary>
     private readonly NocContent? nocContent;
     /// <summary>Mythic essences only drop in a world flagged <c>raid</c> in GameWorlds.json.</summary>
@@ -237,6 +238,7 @@ public sealed class GameWorld : IWorkerWorld {
             essenceDropper = new EssenceDropper(mimicService.Config, essenceRoll ?? Random.Shared.NextDouble);
         }
 
+        pvpPolicy = settings.Nocthemar?.ResolvePvpPolicy() ?? PvpPolicy.Legacy;
         nocDispatcher = new NocDispatcher(settings.Nocthemar?.Debug ?? false, soulForgeInRange: IsSoulForgeInRange, factionMasterInRange: IsFactionMasterInRange, factionChanged: BroadcastFactionChanged);
         this.monsterCatalog = monsterCatalog;
         this.monstersById = monstersById;
@@ -1307,6 +1309,10 @@ public sealed class GameWorld : IWorkerWorld {
 
         return false;
     }
+
+    /// <summary>Whether <paramref name="attacker"/> may hurt <paramref name="target"/> under the world's <c>nocthemar.pvpMode</c> (always true for legacy and for self).</summary>
+    public bool CanPlayerHarmPlayer(GameWorldPlayer attacker, GameWorldPlayer target) =>
+        attacker.PlayerId == target.PlayerId || PvpRules.CanHarm(pvpPolicy, attacker.FactionId, target.FactionId);
 
     /// <summary>True when the master NPC of <paramref name="factionId"/> in this world stands within range of the player.</summary>
     private bool IsFactionMasterInRange(GameWorldPlayer player, int factionId) {

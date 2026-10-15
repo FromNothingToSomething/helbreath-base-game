@@ -167,6 +167,10 @@ public static class Combat {
             return;
         }
 
+        if (!wr.World.CanPlayerHarmPlayer(player, targetPlayer)) {
+            return;
+        }
+
         if (targetPlayer.HasTemporaryEffect(TemporaryEffectType.Invisibility)) {
             return;
         }
@@ -275,6 +279,9 @@ public static class Combat {
             return;
         }
         if (targetPlayer.SpawnProtection) {
+            return;
+        }
+        if (!wr.World.CanPlayerHarmPlayer(attacker, targetPlayer)) {
             return;
         }
         if (targetPlayer.HasTemporaryEffect(TemporaryEffectType.Invisibility)) {

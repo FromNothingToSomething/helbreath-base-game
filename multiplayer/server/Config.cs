@@ -696,6 +696,7 @@ public static class Config {
         if (tm.AntiHackTimingLagFactor < 0 || tm.AntiHackTimingLagFactor > 1) {
             throw new ArgumentOutOfRangeException(nameof(tm.AntiHackTimingLagFactor), "Anti-hack timing lag factor must be between zero and one inclusive.");
         }
+        _ = settings.Nocthemar?.ResolvePvpPolicy(); // fail fast on an unknown pvpMode
         return settings;
     }
 }

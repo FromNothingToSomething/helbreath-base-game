@@ -463,6 +463,9 @@ public static class Casting {
             if (!wr.World.TryGetConnectedPlayerById(playerId, out var targetPlayer) || targetPlayer.Disconnected || targetPlayer.IsDead || targetPlayer.SpawnProtection) {
                 continue;
             }
+            if (!wr.World.CanPlayerHarmPlayer(caster, targetPlayer)) {
+                continue;
+            }
 
             Combat.ApplyPlayerDamageToPlayer(wr, caster, targetPlayer, attackType, DamageSchool.Magic);
             TemporaryEffects.ApplySpellTemporaryEffectsOnHit(wr, spell, targetPlayer);
@@ -492,6 +495,9 @@ public static class Casting {
                 continue;
             }
             if (!IsWithinSpellDamageArea(targetPlayer.PosX, targetPlayer.PosY, targetX, targetY, aoeRadius)) {
+                continue;
+            }
+            if (!wr.World.CanPlayerHarmPlayer(caster, targetPlayer)) {
                 continue;
             }
 
