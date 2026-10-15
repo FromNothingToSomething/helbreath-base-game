@@ -13,6 +13,11 @@
  * fuses the other two, equips the learned ability (a second equip must be refused: one slot below level 11) and, for classes 0 and 4 (Iron Skin, a self buff), casts it once.
  * The learned abilities, their experience, the bar and the slot count are part of the compared state: they must survive the reconnect and the server restart.
  *
+ * T87 extends it to the factions, reputation and quests (module 5): after the mimicry each client takes enough XP for level 10, adds reputation with its faction through the
+ * debug request (Friendly tier), is refused a join without a master in range, summons the master of its faction (NPC 11 + faction id), joins (a second join is refused), accepts the
+ * deliver quest of its faction, creates the items in the bag, turns the quest in (reputation and completion recorded) and leaves a second quest active. Faction, reputations, active
+ * quests and completed quests are part of the compared state: they must survive the reconnect and the server restart.
+ *
  * Usage (from tools/):
  *   node --import tsx ./noc-e2e/reconnect.ts --mode grant  --state state.json [--clients 20] [--ip 127.0.0.1] [--port 1337]
  *   node --import tsx ./noc-e2e/reconnect.ts --mode verify --state state.json [--ip ...] [--port ...]
@@ -36,6 +41,7 @@ interface Snap {
     raceId: number; maxHp: number; gender: number; skinColor: number; hairStyleIndex: number; underwearColorIndex: number;
     classId: number | null; skillPoints: number; skills: number[];
     mimics: { id: number; xp: string; level: number }[]; mimicEquipped: number[]; mimicSlots: number;
+    factionId: number | null; reputations: { factionId: number; value: number }[]; quests: { questId: number; progress: number }[]; questsDone: number[];
 }
 interface Creation { raceId: number; gender: number; skinColor: number; hairStyleIndex: number; underwearColorIndex: number }
 interface SavedClient { id: string; name: string; amount: string; race: number; creation: Creation; state: Snap }
@@ -78,6 +84,8 @@ const toSnap = (s: NocSnapshot, look: Look): Snap => ({
     hairStyleIndex: look.hairStyleIndex, underwearColorIndex: look.underwearColorIndex,
     classId: s.classId ?? null, skillPoints: s.skillPoints, skills: [...s.skills],
     mimics: s.mimics.map((m) => ({ id: m.id, xp: m.xp.toString(), level: m.level })), mimicEquipped: [...s.mimicEquipped], mimicSlots: s.mimicSlots,
+    factionId: s.factionId ?? null, reputations: s.reputations.map((r) => ({ factionId: r.factionId, value: r.value })),
+    quests: s.quests.map((q) => ({ questId: q.questId, progress: q.progress })), questsDone: [...s.questsDone],
 });
 const same = (a: Snap, b: Snap) => JSON.stringify(a) === JSON.stringify(b);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -187,6 +195,23 @@ class Bot {
         this.send({ payload: { $case: 'nocMimicEquipRequest', value: { abilityId, equipped } } });
     }
 
+    factionJoin(factionId: number): void {
+        this.send({ payload: { $case: 'nocFactionJoinRequest', value: { factionId } } });
+    }
+
+    questAccept(questId: number): void {
+        this.send({ payload: { $case: 'nocQuestAcceptRequest', value: { questId } } });
+    }
+
+    questTurnIn(questId: number): void {
+        this.send({ payload: { $case: 'nocQuestTurnInRequest', value: { questId } } });
+    }
+
+    /** Debug only (nocthemar.debug): adds to the reputation with a faction. */
+    reputationAdd(factionId: number, delta: number): void {
+        this.send({ payload: { $case: 'nocReputationAddRequest', value: { factionId, delta } } });
+    }
+
     async close(): Promise<void> {
         clearInterval(this.ping);
         const ws = this.ws;
@@ -218,6 +243,87 @@ async function viaForge(bot: Bot, send: () => void, done: () => boolean, what: s
         await sleep(300);
     }
     throw new Error(`${bot.name}: ${what}: no effect after 8 attempts (Soul Forge never in range?)`);
+}
+
+const NO_MASTER = 'No faction master in range.';
+const FRIENDLY_FLOOR = 1000; // Factions.json / reputation rules: Friendly starts at 1000
+const FACTION_COUNT = 4;
+const FACTION_MASTER_NPC = (factionId: number) => 11 + factionId;
+// Enough XP for level 10 (the join level): the cumulated curve of Progression.json reaches 17353 at level 10.
+const JOIN_XP = 40000n;
+
+interface QuestJson { id: number; factionId: number; minTier: string; kind: string; itemId?: number; count: number; rewards: { rep: number } }
+const loadQuests = (): QuestJson[] => (JSON.parse(readFileSync(join(nocConfigDir, 'Quests.json'), 'utf8')) as { quests: QuestJson[] }).quests;
+
+/**
+ * Sends a faction master request until `done` holds. The summoned master appears on a later world tick, so "No faction master in range." and silence are retried;
+ * any other refusal ends the attempt with an error.
+ */
+async function viaMaster(bot: Bot, send: () => void, done: () => boolean, what: string): Promise<void> {
+    for (let attempt = 0; attempt < 8; attempt++) {
+        bot.refusals = [];
+        send();
+        const end = Date.now() + 700;
+        while (Date.now() < end && !done()) await sleep(25);
+        if (done()) return;
+        if (bot.refusals.some((r) => r !== NO_MASTER)) throw new Error(`${bot.name}: ${what} refused (${bot.refusals.join('; ')})`);
+        await sleep(300);
+    }
+    throw new Error(`${bot.name}: ${what}: no effect after 8 attempts (faction master never in range?)`);
+}
+
+const repOf = (bot: Bot, factionId: number) => bot.last?.reputations.find((r) => r.factionId === factionId)?.value ?? 0;
+
+/** Level 10, reputation, join, deliver quest handed in, a kill quest left active. */
+async function factions(bot: Bot, index: number): Promise<void> {
+    const factionId = index % FACTION_COUNT;
+    bot.grant(JOIN_XP);
+    await waitFor(() => (bot.last?.level ?? 0) >= 10, 5000, `${bot.name}: level 10 not reached after ${JOIN_XP} XP`);
+
+    // Debug reputation: the tier follows the value (Friendly from 1000). The snapshot carries the value; the client derives the tier.
+    bot.reputationAdd(factionId, FRIENDLY_FLOOR + 500);
+    await waitFor(() => repOf(bot, factionId) === FRIENDLY_FLOOR + 500, 5000, `${bot.name}: reputation not applied (is nocthemar.debug true?)`);
+
+    // No master yet: refused with the exact sentence, state unchanged.
+    bot.refusals = [];
+    bot.factionJoin(factionId);
+    await waitFor(() => bot.refusals.length > 0, 5000, `${bot.name}: join without a master was not answered`);
+    if (bot.refusals[0] !== NO_MASTER) throw new Error(`${bot.name}: join without a master refused with "${bot.refusals[0]}", expected "${NO_MASTER}"`);
+    if (bot.last!.factionId !== null) throw new Error(`${bot.name}: joined without a master`);
+
+    bot.summonNpc(FACTION_MASTER_NPC(factionId));
+    await sleep(300);
+    await viaMaster(bot, () => bot.factionJoin(factionId), () => bot.last?.factionId === factionId, `join faction ${factionId}`);
+    bot.refusals = [];
+    bot.factionJoin((factionId + 1) % FACTION_COUNT); // final choice: refused
+    await waitFor(() => bot.refusals.length > 0, 5000, `${bot.name}: second join was not refused`);
+
+    const questsJson = loadQuests();
+    const deliver = questsJson.find((q) => q.factionId === factionId && q.kind === 'deliver' && q.minTier !== 'Honored');
+    const kill = questsJson.find((q) => q.factionId === factionId && q.kind === 'kill' && q.minTier === 'Neutral');
+    if (!deliver || !kill || deliver.itemId === undefined) throw new Error(`faction ${factionId}: Quests.json lacks a deliver and a neutral kill quest`);
+    const active = (id: number) => bot.last?.quests.some((q) => q.questId === id) === true;
+
+    await viaMaster(bot, () => bot.questAccept(deliver.id), () => active(deliver.id), `accept quest ${deliver.id}`);
+    for (let left = deliver.count; left > 0; left -= 100) {
+        const before = bot.bagAdds;
+        bot.createItem(deliver.itemId, Math.min(left, 100));
+        await waitFor(() => bot.bagAdds > before, 5000, `${bot.name}: items for quest ${deliver.id} not added`);
+    }
+    // Deliver progress follows the bag; the server resyncs it before each update flush.
+    await waitFor(() => (bot.last?.quests.find((q) => q.questId === deliver.id)?.progress ?? 0) >= deliver.count, 5000, `${bot.name}: deliver progress did not reach ${deliver.count}`);
+    const repBefore = repOf(bot, factionId);
+    await viaMaster(bot, () => bot.questTurnIn(deliver.id), () => bot.last?.questsDone.includes(deliver.id) === true, `turn in quest ${deliver.id}`);
+    if (active(deliver.id)) throw new Error(`${bot.name}: quest ${deliver.id} still active after the turn-in`);
+    await waitFor(() => repOf(bot, factionId) === repBefore + deliver.rewards.rep, 5000, `${bot.name}: reputation ${repOf(bot, factionId)} after the turn-in, expected ${repBefore + deliver.rewards.rep}`);
+
+    // Not repeatable: accepting it again is refused.
+    bot.refusals = [];
+    bot.questAccept(deliver.id);
+    await waitFor(() => bot.refusals.length > 0, 5000, `${bot.name}: second accept of a completed quest was not refused`);
+
+    // A quest left active (progress 0): faction, reputation, active and completed quests all go through the reconnect and the restart.
+    await viaMaster(bot, () => bot.questAccept(kill.id), () => active(kill.id), `accept quest ${kill.id}`);
 }
 
 const learned = (bot: Bot, abilityId: number) => bot.last?.mimics.some((m) => m.id === abilityId) === true;
@@ -338,6 +444,7 @@ async function grant(): Promise<void> {
         await waitFor(() => bot.refusals.length > 0, 5000, `${bot.name}: second class choice was not refused`);
 
         const mimic = await mimicry(bot, cls);
+        await factions(bot, i);
         await sleep(700);
         const s1 = bot.last!;
         if (JSON.stringify(s1.mimics.map((m) => m.id)) !== JSON.stringify(mimic.learnedIds) || s1.mimicEquipped[0] !== consumeFor(cls) || s1.mimicEquipped.length !== 1) {
