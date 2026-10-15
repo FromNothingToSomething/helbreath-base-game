@@ -165,7 +165,7 @@ public class MonsterFactionTests {
 
         Assert.Contains("FactionConfig.LoadAsync()", source);
         Assert.Contains("Config.ValidateMonsterFactionReferences(monstersById, factionConfig);", source);
-        Assert.Contains("BuiltinMimicHandlers.Register(new MimicHandlerRegistry()), factionConfig, questConfig);", source);
+        Assert.Contains("BuiltinMimicHandlers.Register(new MimicHandlerRegistry()), factionConfig, questConfig, zoneConfig);", source);
     }
 
     private static string FindSource(params string[] relative) {

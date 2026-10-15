@@ -1197,6 +1197,10 @@ public sealed class GameWorld : IWorkerWorld {
             return;
         }
         if (!request.ValidateTeleport) {
+            if (RefuseZoneEntry(player, request.WorldId)) {
+                return;
+            }
+
             player.RequestWorldChange(new WorldTransferDestination(request.WorldId, null, null));
             return;
         }
@@ -1213,10 +1217,25 @@ public sealed class GameWorld : IWorkerWorld {
                 $"[GameWorld:{id}] Teleport world mismatch for player '{player.PlayerId}' at ({player.PosX}, {player.PosY}): requested '{request.WorldId}', authoritative '{teleportTarget.WorldId}'.");
         }
 
+        if (RefuseZoneEntry(player, teleportTarget.WorldId)) {
+            return;
+        }
+
         player.RequestWorldChange(new WorldTransferDestination(
             teleportTarget.WorldId,
             teleportTarget.Loc.X,
             teleportTarget.Loc.Y));
+    }
+
+    /// <summary>True (and the player is told why) when the destination is a Nocthemar zone whose entry level the player has not reached; the player is not moved.</summary>
+    private bool RefuseZoneEntry(GameWorldPlayer player, string destinationWorldId) {
+        var refusal = nocContent?.Zones?.CheckEntry(destinationWorldId, player.Level);
+        if (refusal is null) {
+            return false;
+        }
+
+        NetworkManager.SendToPlayer(player, NetworkManager.CreateNocActionRefused(refusal));
+        return true;
     }
 
     /// <summary>Rejects stale client packets that were sent from another world but arrived after the session had already transferred.</summary>

@@ -10,7 +10,7 @@ namespace Server.Nocthemar.Skills;
 /// Passing none (null) to a world or a player keeps the game exactly as it was before classes existed (no class, no skills, nothing sent).
 /// </summary>
 public sealed class NocContent {
-    public NocContent(ClassConfig classes, SkillConfig skills, ProgressionConfig progression, SkillHandlerRegistry handlers, MimicConfig? mimic = null, MimicHandlerRegistry? mimicHandlers = null, FactionConfig? factions = null, QuestConfig? quests = null) {
+    public NocContent(ClassConfig classes, SkillConfig skills, ProgressionConfig progression, SkillHandlerRegistry handlers, MimicConfig? mimic = null, MimicHandlerRegistry? mimicHandlers = null, FactionConfig? factions = null, QuestConfig? quests = null, ZoneConfig? zones = null) {
         ArgumentNullException.ThrowIfNull(classes);
         ArgumentNullException.ThrowIfNull(skills);
         ArgumentNullException.ThrowIfNull(progression);
@@ -24,6 +24,7 @@ public sealed class NocContent {
         Reputation = factions is null ? null : new ReputationService(factions);
         Factions = Reputation is null ? null : new FactionService(Reputation);
         Quests = quests is null || Reputation is null ? null : new QuestService(quests, Reputation);
+        Zones = zones is null ? null : new ZoneService(zones);
         MimicHandlers = mimicHandlers ?? new MimicHandlerRegistry();
         if (mimic is not null) {
             MimicHandlers.ValidateCatalog(mimic);
@@ -46,6 +47,9 @@ public sealed class NocContent {
 
     /// <summary>Quest rules; null when the content has no quest catalog or no faction catalog (quests need a faction).</summary>
     public QuestService? Quests { get; }
+
+    /// <summary>Entry rules of the zones; null when the content has no zone catalog (every world is open).</summary>
+    public ZoneService? Zones { get; }
 
     /// <summary>Handlers of the mimicry abilities (empty when none were given).</summary>
     public MimicHandlerRegistry MimicHandlers { get; }

@@ -46,7 +46,7 @@ var factionConfig = await FactionConfig.LoadAsync();
 var questConfig = await QuestConfig.LoadAsync(factionConfig);
 var zoneConfig = await ZoneConfig.LoadAsync(factionConfig);
 // Skill handlers are registered here; NocContent fails fast when a ready skill names a handler that is not.
-var nocContent = new NocContent(classes, classSkills, progression, BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), mimicConfig, BuiltinMimicHandlers.Register(new MimicHandlerRegistry()), factionConfig, questConfig);
+var nocContent = new NocContent(classes, classSkills, progression, BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), mimicConfig, BuiltinMimicHandlers.Register(new MimicHandlerRegistry()), factionConfig, questConfig, zoneConfig);
 var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");
 // Fails fast on an unusable persistence.provider, before any world worker starts.
 var characterStore = CharacterStoreFactory.Create(settings.Persistence, charsDirectory, progression);
