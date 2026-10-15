@@ -55,6 +55,8 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
     private readonly MimicService? mimicService;
     /// <summary>Faction and reputation rules; null when the world has no faction catalog.</summary>
     private readonly ReputationService? reputationService;
+    /// <summary>Faction rules and perks; null together with <see cref="reputationService"/>.</summary>
+    private readonly FactionService? factionService;
     /// <summary>Handlers of the mimicry abilities; null together with <see cref="mimicService"/>.</summary>
     private readonly MimicHandlerRegistry? mimicHandlers;
     /// <summary>Unix ms at which each mimicry ability can be cast again.</summary>
@@ -247,6 +249,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
             skillService = nocContent.Rules;
             mimicService = nocContent.Mimic;
             reputationService = nocContent.Reputation;
+            factionService = nocContent.Factions;
             mimicHandlers = nocContent.MimicHandlers;
             NocCatalog = nocContent.Catalog;
             skillEffects = new SkillEffects(stats, new SkillHookTable(nocContent.Handlers));
@@ -461,6 +464,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         noc = state with { RaceId = race.Id };
         stats.SetLevel(noc.Level);
         ApplySkillEffects();
+        ApplyFactionPerks();
         TrimMimicBar();
         maxHp = stats.MaxHp;
         hp = Math.Min(hp, maxHp);
@@ -638,12 +642,66 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         }
 
         var result = reputationService.ApplyKill(CreateNocState(), monsterFactionId, repOnKill, stats.Get(StatId.ReputationGainMult));
-        if (result.Changes.Count > 0) {
-            noc = noc with { Reputations = result.State.Reputations };
-            nocDirty = true;
+        ApplyReputationChanges(result);
+        return result.Changes;
+    }
+
+    /// <summary>Debug adjustment of a reputation (no gain multiplier, no affiliation needed). False when the world has no faction catalog or the faction is unknown.</summary>
+    public bool TryAdjustReputation(int factionId, int delta) {
+        if (reputationService is null || !reputationService.Config.Contains(factionId)) {
+            return false;
         }
 
-        return result.Changes;
+        ApplyReputationChanges(reputationService.Adjust(CreateNocState(), factionId, delta));
+        return true;
+    }
+
+    /// <summary>Keeps the new reputations, marks the state for the client and, when the standing with the character's own faction crossed a tier, refreshes the perks.</summary>
+    private void ApplyReputationChanges(ReputationResult result) {
+        if (result.Changes.Count == 0) {
+            return;
+        }
+
+        var rules = reputationService!.Rules;
+        var perksChanged = noc.FactionId is int own && result.Changes.Any(c => c.FactionId == own && rules.TierOf(c.Before) != rules.TierOf(c.After));
+        noc = noc with { Reputations = result.State.Reputations };
+        nocDirty = true;
+        if (perksChanged) {
+            RefreshDerivedStats();
+        }
+    }
+
+    /// <summary>Joins a faction (see <see cref="FactionService.Join"/>); returns null on success, otherwise the reason. The perks of the new standing apply at once.</summary>
+    public string? TryJoinFaction(int factionId) {
+        if (factionService is null) {
+            return NoFactionContent;
+        }
+
+        var result = factionService.Join(CreateNocState(), factionId);
+        if (!result.Ok) {
+            return result.Refusal;
+        }
+
+        noc = result.State;
+        RefreshDerivedStats();
+        return null;
+    }
+
+    private const string NoFactionContent = "Factions are not available.";
+
+    /// <summary>Replaces the faction modifiers: those of the joined faction at the current tier, nothing else.</summary>
+    private void ApplyFactionPerks() {
+        if (factionService is null) {
+            return;
+        }
+
+        foreach (var sourceId in factionService.SourceIds) {
+            stats.RemoveSource(sourceId);
+        }
+
+        foreach (var modifier in factionService.PerksOf(noc)) {
+            stats.Add(modifier);
+        }
     }
 
     /// <summary>Chooses the class once. Returns null on success, otherwise the reason shown to the player.</summary>
@@ -917,6 +975,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         var oldMaxHp = maxHp;
         var oldHp = hp;
         ApplySkillEffects();
+        ApplyFactionPerks();
         TrimMimicBar();
         maxHp = stats.MaxHp;
         hp = Math.Min(hp, maxHp);

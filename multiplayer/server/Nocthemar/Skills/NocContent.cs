@@ -22,6 +22,7 @@ public sealed class NocContent {
         Catalog = NocCatalogBuilder.Build(classes, skills, Rules, mimic);
         Mimic = mimic is null ? null : new MimicService(mimic);
         Reputation = factions is null ? null : new ReputationService(factions);
+        Factions = Reputation is null ? null : new FactionService(Reputation);
         MimicHandlers = mimicHandlers ?? new MimicHandlerRegistry();
         if (mimic is not null) {
             MimicHandlers.ValidateCatalog(mimic);
@@ -38,6 +39,9 @@ public sealed class NocContent {
 
     /// <summary>Faction and reputation rules; null when the content has no faction catalog (no reputation is checked or earned).</summary>
     public ReputationService? Reputation { get; }
+
+    /// <summary>Joining a faction and its perks; null together with <see cref="Reputation"/>.</summary>
+    public FactionService? Factions { get; }
 
     /// <summary>Handlers of the mimicry abilities (empty when none were given).</summary>
     public MimicHandlerRegistry MimicHandlers { get; }
