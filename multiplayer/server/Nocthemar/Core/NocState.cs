@@ -13,6 +13,8 @@ namespace Server.Nocthemar.Core;
 /// <param name="FactionId">Reserved (module 7).</param>
 /// <param name="Skills">Ids of the learned class skills (<c>Skills.json</c>), ascending; null (not an empty list) when none, so a character without skills has the same value as before skills existed. Unknown, unlearnable or rule-breaking ids are dropped when the save is loaded.</param>
 /// <param name="Kills">Monsters killed by the character (saturating); counter for skills that scale with kills.</param>
+/// <param name="Mimics">Learned mimicry abilities (<c>Mimic.json</c>) with their experience, ascending by id; null (not an empty list) when none. Unknown, class-forbidden or duplicate ids are dropped when the save is loaded.</param>
+/// <param name="MimicEquipped">Ids of the equipped mimicry abilities, in bar order (position = slot); null when none. Only learned abilities fit, up to the number of slots at the character's level.</param>
 public sealed record NocState(
     int V = NocState.CurrentV,
     int Level = 1,
@@ -22,10 +24,12 @@ public sealed record NocState(
     int? ClassId = null,
     int? FactionId = null,
     int[]? Skills = null,
-    int Kills = 0) {
+    int Kills = 0,
+    MimicEntry[]? Mimics = null,
+    int[]? MimicEquipped = null) {
 
-    /// <summary>Layout 2 adds <see cref="Skills"/> and <see cref="Kills"/>; a layout-1 block reads as "no skills, no kills".</summary>
-    public const int CurrentV = 2;
+    /// <summary>Layout 2 adds <see cref="Skills"/> and <see cref="Kills"/>; layout 3 adds <see cref="Mimics"/> and <see cref="MimicEquipped"/>. An older block reads as "none of these".</summary>
+    public const int CurrentV = 3;
 
     /// <summary>Race given to characters saved before races existed (migration 1 -> 2): the first race, Valdorniens.</summary>
     public const int LegacyRaceId = 0;
@@ -33,3 +37,6 @@ public sealed record NocState(
     /// <summary>Fresh level-1 character with mana at <paramref name="maxMana"/>.</summary>
     public static NocState CreateDefault(int maxMana) => new(CurrentV, 1, 0, Math.Max(0, maxMana));
 }
+
+/// <summary>A learned mimicry ability: its id in <c>Mimic.json</c> and the experience gained by casting it (the level is derived from the xp table).</summary>
+public sealed record MimicEntry(int Id, long Xp = 0);

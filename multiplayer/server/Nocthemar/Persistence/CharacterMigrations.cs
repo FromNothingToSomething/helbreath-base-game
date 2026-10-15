@@ -56,12 +56,26 @@ public sealed class Migration1To2 : ICharacterMigration {
 }
 
 /// <summary>
-/// 2 -> 3: the NOCTHEMAR block gets layout <see cref="NocState.CurrentV"/> (class, skills and kills are new nullable/zero fields, so no value changes: nobody has a class yet).
+/// 2 -> 3: the NOCTHEMAR block gets layout 3 at least (class, skills and kills are new nullable/zero fields, so no value changes: nobody has a class yet).
 /// A null block stays null. Characters keep their race, level, XP and mana untouched.
 /// </summary>
 public sealed class Migration2To3 : ICharacterMigration {
     public int From => 2;
     public int To => 3;
+
+    public PlayerPersistenceState Apply(PlayerPersistenceState state) =>
+        state.Noc is null
+            ? state
+            : state with { Noc = state.Noc with { V = Math.Max(state.Noc.V, 3) } };
+}
+
+/// <summary>
+/// 3 -> 4: the NOCTHEMAR block gets layout <see cref="NocState.CurrentV"/> (mimicry abilities and equipment are new nullable fields: nobody has learned one yet).
+/// A null block stays null. Idempotent: the layout is only ever raised, and nothing else is touched.
+/// </summary>
+public sealed class Migration3To4 : ICharacterMigration {
+    public int From => 3;
+    public int To => 4;
 
     public PlayerPersistenceState Apply(PlayerPersistenceState state) =>
         state.Noc is null
@@ -102,7 +116,7 @@ public sealed class CharacterMigrator {
 
     /// <summary>Chain for the shipped schema (<see cref="CharacterSchema.Current"/>).</summary>
     public static CharacterMigrator CreateDefault(ProgressionConfig progression) =>
-        new([new Migration0To1(progression), new Migration1To2(), new Migration2To3()], CharacterSchema.Current);
+        new([new Migration0To1(progression), new Migration1To2(), new Migration2To3(), new Migration3To4()], CharacterSchema.Current);
 
     /// <summary>
     /// Upgrades <paramref name="state"/> to <see cref="CurrentVersion"/>.
