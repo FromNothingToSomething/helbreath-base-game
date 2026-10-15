@@ -1114,7 +1114,8 @@ public static class NetworkManager {
         int level, long xp, long xpToNext, int mana, int maxMana, int raceId = 0,
         int? classId = null, int skillPoints = 0, IReadOnlyList<int>? skills = null,
         IReadOnlyList<NocMimicState>? mimics = null, IReadOnlyList<int>? mimicEquipped = null, int mimicSlots = 0,
-        int? factionId = null, IReadOnlyList<NocReputation>? reputations = null) {
+        int? factionId = null, IReadOnlyList<NocReputation>? reputations = null,
+        IReadOnlyList<NocQuestState>? quests = null, IReadOnlyList<int>? questsDone = null) {
         var snapshot = new NocSnapshot {
             Level = level,
             Xp = xp,
@@ -1147,6 +1148,14 @@ public static class NetworkManager {
 
         if (reputations is not null) {
             snapshot.Reputations.AddRange(reputations);
+        }
+
+        if (quests is not null) {
+            snapshot.Quests.AddRange(quests);
+        }
+
+        if (questsDone is not null) {
+            snapshot.QuestsDone.AddRange(questsDone);
         }
 
         return snapshot;

@@ -33,7 +33,15 @@ message NocSnapshot {
   optional int32 faction_id = 13;
   // Reputation with each faction that moved away from 0, ascending by faction id; empty when none.
   repeated NocReputation reputations = 14;
-  // 15 and 16 are reserved for the quest log (T84).
+  // Active quests with their progress (kills made, or units of the item in the bag, never above the quest's count), ascending by quest id.
+  repeated NocQuestState quests = 15;
+  // Ids of the quests turned in, ascending.
+  repeated int32 quests_done = 16;
+}
+
+message NocQuestState {
+  int32 quest_id = 1;
+  int32 progress = 2;
 }
 
 message NocReputation {
@@ -110,6 +118,23 @@ message NocMimicEquipRequest {
 // Join a faction at one of its masters (an NPC of that faction within range). Refused when the sender is dead, already has a faction, is under the join level or no master is in range. Accepted: the next NocStateUpdated carries the faction, nearby players receive PlayerFactionChanged.
 message NocFactionJoinRequest {
   int32 faction_id = 1;
+}
+
+// Quests are given and taken back by the master of the quest's faction (an NPC of that faction within range). Refusals, in order:
+// the sender is dead, unknown quest, no master of the quest's faction in range, then the rules of the quest (accept: no faction, quest of another
+// faction, already completed, already active, standing below the quest's tier, too many active quests; turn-in: not active, objective not reached,
+// bag too full for the reward). Accepted: the next NocStateUpdated carries the quests; a turn-in also sends the bag changes.
+message NocQuestAcceptRequest {
+  int32 quest_id = 1;
+}
+
+// Gives an active quest up, anywhere (no master needed); refused when the quest is unknown or not active.
+message NocQuestAbandonRequest {
+  int32 quest_id = 1;
+}
+
+message NocQuestTurnInRequest {
+  int32 quest_id = 1;
 }
 
 // Debug only (nocthemar.debug): adds `delta` (may be negative) to the sender's reputation with a faction.
@@ -213,7 +238,34 @@ message NocCatalog {
   // Empty when the world has no faction catalog.
   repeated NocFactionInfo factions = 10;
   NocReputationRules reputation_rules = 11;
-  // 12 is reserved for the quest catalog (T84).
+  repeated NocQuestInfo quests = 12;
+  // Quests a character can carry at the same time.
+  int32 quest_max_active = 13;
+}
+
+message NocQuestInfo {
+  int32 id = 1;
+  string key = 2;
+  string name = 3;
+  // The faction whose master gives and takes back the quest; only its members can do it.
+  int32 faction_id = 4;
+  // ReputationTier needed: 1 neutral .. 4 exalted.
+  int32 min_tier = 5;
+  // QuestKind: 0 kill, 1 deliver.
+  int32 kind = 6;
+  // Monster catalog id (kill) or item id (deliver).
+  int32 target_id = 7;
+  int32 count = 8;
+  int64 reward_xp = 9;
+  // Reputation with `faction_id`.
+  int32 reward_rep = 10;
+  repeated NocQuestItem reward_items = 11;
+  string desc = 12;
+}
+
+message NocQuestItem {
+  int32 item_id = 1;
+  int32 quantity = 2;
 }
 
 message NocFactionInfo {

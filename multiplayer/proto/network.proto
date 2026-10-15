@@ -105,7 +105,9 @@ message ClientMessage {
     NocForgeFuseRequest noc_forge_fuse_request = 106;
     NocMimicEquipRequest noc_mimic_equip_request = 107;
     NocFactionJoinRequest noc_faction_join_request = 108;
-    // 109-111 are reserved for the quest requests (T84).
+    NocQuestAcceptRequest noc_quest_accept_request = 109;
+    NocQuestAbandonRequest noc_quest_abandon_request = 110;
+    NocQuestTurnInRequest noc_quest_turn_in_request = 111;
     NocReputationAddRequest noc_reputation_add_request = 112;
   }
 }

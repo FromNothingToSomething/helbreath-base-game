@@ -19,7 +19,7 @@ public sealed class NocContent {
         Classes = classes;
         Skills = skills;
         Rules = new SkillService(classes, skills, progression);
-        Catalog = NocCatalogBuilder.Build(classes, skills, Rules, mimic, factions);
+        Catalog = NocCatalogBuilder.Build(classes, skills, Rules, mimic, factions, factions is null ? null : quests);
         Mimic = mimic is null ? null : new MimicService(mimic);
         Reputation = factions is null ? null : new ReputationService(factions);
         Factions = Reputation is null ? null : new FactionService(Reputation);

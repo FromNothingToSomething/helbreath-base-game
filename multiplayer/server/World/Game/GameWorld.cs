@@ -786,6 +786,9 @@ public sealed class GameWorld : IWorkerWorld {
             case ClientMessage.PayloadOneofCase.NocForgeConsumeRequest:
             case ClientMessage.PayloadOneofCase.NocForgeFuseRequest:
             case ClientMessage.PayloadOneofCase.NocFactionJoinRequest:
+            case ClientMessage.PayloadOneofCase.NocQuestAcceptRequest:
+            case ClientMessage.PayloadOneofCase.NocQuestAbandonRequest:
+            case ClientMessage.PayloadOneofCase.NocQuestTurnInRequest:
             case ClientMessage.PayloadOneofCase.NocReputationAddRequest:
             case ClientMessage.PayloadOneofCase.NocMimicEquipRequest:
                 nocDispatcher.Handle(playerConnection, message.Message);

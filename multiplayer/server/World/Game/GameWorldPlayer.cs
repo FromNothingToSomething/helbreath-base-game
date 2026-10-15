@@ -1237,7 +1237,8 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         progression.TryGetXpToNext(noc.Level, out var xpToNext);
         return NetworkManager.CreateNocSnapshot(
             noc.Level, noc.Xp, xpToNext, mana, stats.MaxMana, race.Id, noc.ClassId, SkillPoints, noc.Skills,
-            MimicStatesForSnapshot(), noc.MimicEquipped, MimicSlotLimit, noc.FactionId, ReputationsForSnapshot());
+            MimicStatesForSnapshot(), noc.MimicEquipped, MimicSlotLimit, noc.FactionId, ReputationsForSnapshot(),
+            noc.Quests?.Select(q => new NocQuestState { QuestId = q.Id, Progress = q.Progress }).ToList(), noc.QuestsDone);
     }
 
     /// <summary>The non-zero reputations with their faction, ascending by faction id.</summary>

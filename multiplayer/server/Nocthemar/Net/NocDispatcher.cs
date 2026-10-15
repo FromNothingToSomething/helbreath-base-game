@@ -48,6 +48,9 @@ public sealed class NocDispatcher {
             or ClientMessage.PayloadOneofCase.NocForgeFuseRequest
             or ClientMessage.PayloadOneofCase.NocMimicEquipRequest
             or ClientMessage.PayloadOneofCase.NocFactionJoinRequest
+            or ClientMessage.PayloadOneofCase.NocQuestAcceptRequest
+            or ClientMessage.PayloadOneofCase.NocQuestAbandonRequest
+            or ClientMessage.PayloadOneofCase.NocQuestTurnInRequest
             or ClientMessage.PayloadOneofCase.NocReputationAddRequest;
 
     /// <summary>True when the payload belongs to NOCTHEMAR (executed or refused), false when it is not ours.</summary>
@@ -83,6 +86,15 @@ public sealed class NocDispatcher {
                 return true;
             case ClientMessage.PayloadOneofCase.NocFactionJoinRequest:
                 HandleFactionJoin(player, message.NocFactionJoinRequest);
+                return true;
+            case ClientMessage.PayloadOneofCase.NocQuestAcceptRequest:
+                HandleQuest(player, message.NocQuestAcceptRequest.QuestId, QuestAction.Accept);
+                return true;
+            case ClientMessage.PayloadOneofCase.NocQuestAbandonRequest:
+                Answer(player, player.TryAbandonQuest(message.NocQuestAbandonRequest.QuestId));
+                return true;
+            case ClientMessage.PayloadOneofCase.NocQuestTurnInRequest:
+                HandleQuest(player, message.NocQuestTurnInRequest.QuestId, QuestAction.TurnIn);
                 return true;
             case ClientMessage.PayloadOneofCase.NocReputationAddRequest:
                 HandleReputationAdd(player, message.NocReputationAddRequest);
@@ -159,6 +171,42 @@ public sealed class NocDispatcher {
         Answer(player, refusal);
         if (refusal is null) {
             factionChanged(player);
+        }
+    }
+
+    private enum QuestAction { Accept, TurnIn }
+
+    /// <summary>
+    /// Accept or turn in a quest at the master of its faction. Refusals, in order: the player is dead, unknown quest, no master of the quest's faction in range,
+    /// then the rules of <see cref="QuestService"/> (and, for a turn-in, the room in the bag). A turn-in sends the bag changes now; the rest follows with the next <see cref="NocStateUpdated"/>.
+    /// </summary>
+    private void HandleQuest(GameWorldPlayer player, int questId, QuestAction action) {
+        if (player.IsDead) {
+            Answer(player, "You are dead.");
+            return;
+        }
+
+        if (!player.TryGetQuest(questId, out var quest)) {
+            Answer(player, QuestService.UnknownQuest);
+            return;
+        }
+
+        if (!factionMasterInRange(player, quest.FactionId)) {
+            Answer(player, QuestService.NoMasterInRange);
+            return;
+        }
+
+        if (action == QuestAction.Accept) {
+            Answer(player, player.TryAcceptQuest(questId));
+            return;
+        }
+
+        var refusal = player.TryTurnInQuest(questId, out var inventory);
+        Answer(player, refusal);
+        if (refusal is null) {
+            foreach (var mutation in inventory) {
+                NocInventorySync.SendBagDelta(player, mutation);
+            }
         }
     }
 
