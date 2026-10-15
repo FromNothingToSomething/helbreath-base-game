@@ -49,7 +49,7 @@
     },
     {
       "id": 2,
-      "key": "chant_sorcières",
+      "key": "chant_sorcieres",
       "name": "La fin des sorcières",
       "factionId": 0,
       "minTier": "Honored",
