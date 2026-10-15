@@ -3,6 +3,8 @@ import type { CSSProperties } from 'react';
 import { HeadlessDraggableDialog } from './HeadlessDraggableDialog';
 import { RpgButton } from '../components/RpgButton';
 import { nocStore, toggleNocPanel } from '../store/Noc.store';
+import { toggleMimicPanel } from '../store/Mimic.store';
+import { MIMIC_PURPLE_LIGHT } from '../mimicTheme';
 
 interface NocHudDialogProps {
     position: { x: number; y: number };
@@ -47,6 +49,7 @@ function Bar({ ratio, color, label }: { ratio: number; color: string; label: str
 export function NocHudDialog({ position, zIndex, onBringToFront, onDebugGrantXp }: NocHudDialogProps) {
     const view = useStore(nocStore, (state) => state.view);
     const hasCatalog = useStore(nocStore, (state) => state.catalog !== null);
+    const hasMimicry = useStore(nocStore, (state) => (state.catalog?.mimics.length ?? 0) > 0);
     if (!view) {
         return null;
     }
@@ -81,6 +84,11 @@ export function NocHudDialog({ position, zIndex, onBringToFront, onDebugGrantXp 
                 {hasCatalog && (
                     <RpgButton variant="compact" onClick={toggleNocPanel}>
                         {view.classId === null ? 'Choose a class' : view.skillPoints > 0 ? `Skills (${view.skillPoints})` : 'Skills'}
+                    </RpgButton>
+                )}
+                {hasMimicry && (
+                    <RpgButton variant="compact" onClick={toggleMimicPanel} style={{ borderColor: MIMIC_PURPLE_LIGHT }}>
+                        Mimicry
                     </RpgButton>
                 )}
                 {onDebugGrantXp && <RpgButton onClick={onDebugGrantXp}>+100 XP (debug)</RpgButton>}

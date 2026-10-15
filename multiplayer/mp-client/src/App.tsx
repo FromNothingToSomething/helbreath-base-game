@@ -26,6 +26,8 @@ import { ConnectDialog } from './ui/dialogs/ConnectDialog';
 import { DeathDialog } from './ui/dialogs/DeathDialog';
 import { NocHudDialog } from './ui/dialogs/NocHudDialog';
 import { NocSkillsDialog } from './ui/dialogs/NocSkillsDialog';
+import { MimicBarDialog } from './ui/dialogs/MimicBarDialog';
+import { SoulForgeDialog } from './ui/dialogs/SoulForgeDialog';
 import { ConnectingDialog } from './ui/dialogs/ConnectingDialog';
 import { ServerMessageDialog } from './ui/dialogs/ServerMessageDialog';
 import { ChatDialog } from './ui/dialogs/ChatDialog';
@@ -50,6 +52,7 @@ import { appStore, setCursorSpriteKey } from './ui/store/App.store';
 import { CURSOR_GRAB_1, CURSOR_GRAB_2 } from './constants/SpriteKeys';
 import { deathDialogStore } from './ui/store/DeathDialog.store';
 import { nocStore } from './ui/store/Noc.store';
+import { castMimicAbility } from './ui/store/Mimic.store';
 import { getNetworkManager } from './utils/RegistryUtils';
 import { connectingDialogStore } from './ui/store/ConnectingDialog.store';
 import { connectDialogStore } from './ui/store/ConnectDialog.store';
@@ -157,6 +160,29 @@ function App()
         const game = phaserRef.current?.game;
         if (game) {
             getNetworkManager(game)?.sendNocRespecRequest();
+        }
+    };
+    const mimicBarPosition = {
+        x: typeof window === 'undefined' ? 0 : Math.max(0, (window.innerWidth - 440) / 2),
+        y: typeof window === 'undefined' ? 0 : Math.max(0, window.innerHeight - 100),
+    };
+    const soulForgePosition = { x: 40, y: 90 };
+    const handleMimicConsume = (abilityId: number) => {
+        const game = phaserRef.current?.game;
+        if (game) {
+            getNetworkManager(game)?.sendNocForgeConsumeRequest(abilityId);
+        }
+    };
+    const handleMimicFuse = (abilityA: number, abilityB: number) => {
+        const game = phaserRef.current?.game;
+        if (game) {
+            getNetworkManager(game)?.sendNocForgeFuseRequest(abilityA, abilityB);
+        }
+    };
+    const handleMimicEquip = (abilityId: number, equipped: boolean) => {
+        const game = phaserRef.current?.game;
+        if (game) {
+            getNetworkManager(game)?.sendNocMimicEquipRequest(abilityId, equipped);
         }
     };
     // Z-index state for bringing dialogs to front
@@ -965,6 +991,25 @@ function App()
                         onChooseClass={handleNocChooseClass}
                         onLearnSkill={handleNocLearnSkill}
                         onDebugRespec={import.meta.env.DEV ? handleNocRespec : undefined}
+                    />
+                )}
+
+                {showNocHud && (
+                    <MimicBarDialog
+                        position={mimicBarPosition}
+                        zIndex={NOC_HUD_Z_INDEX}
+                        onCast={castMimicAbility}
+                        onUnequip={(abilityId) => handleMimicEquip(abilityId, false)}
+                    />
+                )}
+
+                {showNocHud && (
+                    <SoulForgeDialog
+                        position={soulForgePosition}
+                        zIndex={NOC_HUD_Z_INDEX + 2}
+                        onConsume={handleMimicConsume}
+                        onFuse={handleMimicFuse}
+                        onEquip={handleMimicEquip}
                     />
                 )}
 
