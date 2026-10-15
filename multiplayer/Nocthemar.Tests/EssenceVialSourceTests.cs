@@ -4,6 +4,7 @@ using Server;
 using Server.Nocthemar.Core;
 using Server.Nocthemar.Data;
 using Server.Nocthemar.Net;
+using Server.World.Game;
 using Xunit;
 
 namespace NocthemarTests;
