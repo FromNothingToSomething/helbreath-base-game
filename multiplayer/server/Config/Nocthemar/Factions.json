@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "reputation": {
+    "min": -10000,
+    "max": 10000,
+    "joinLevel": 10,
+    "killBase": 5,
+    "victimRatio": 0.5,
+    "rivalRatio": 1.0,
+    "tiers": { "neutral": -1000, "friendly": 1000, "honored": 3000, "exalted": 6000 }
+  },
+  "factions": [
+    {
+      "id": 0,
+      "key": "chant_de_fer",
+      "name": "Ordre du Chant de Fer",
+      "hq": "Forge Noire",
+      "symbol": "Enclume entourée de cordes de guitare",
+      "colors": ["#c0c4cc", "#1a1a1e", "#e2492f"],
+      "rivals": [1],
+      "perks": [
+        { "tier": "Friendly", "modifiers": [{ "stat": "ResistMagic", "kind": "Flat", "value": 0.03 }] },
+        { "tier": "Honored", "modifiers": [{ "stat": "ArmorMult", "kind": "PercentAdd", "value": 0.05 }] },
+        { "tier": "Exalted", "modifiers": [{ "stat": "MaxHp", "kind": "PercentMult", "value": 0.05 }] }
+      ],
+      "desc": "Bardes-forgerons qui opposent la musique et le métal au Chœur Abyssal."
+    },
+    {
+      "id": 1,
+      "key": "choeur_abyssal",
+      "name": "Chœur Abyssal",
+      "hq": "Cathédrale Noire",
+      "symbol": "Crâne chantant aux ailes de chauve-souris",
+      "colors": ["#7b4fbf", "#15101c", "#5fd39a"],
+      "rivals": [0],
+      "perks": [
+        { "tier": "Friendly", "modifiers": [{ "stat": "ResistDeath", "kind": "Flat", "value": 0.05 }] },
+        { "tier": "Honored", "modifiers": [{ "stat": "MagicDamageMult", "kind": "PercentAdd", "value": 0.05 }] },
+        { "tier": "Exalted", "modifiers": [{ "stat": "MimicPowerMult", "kind": "PercentAdd", "value": 0.05 }] }
+      ],
+      "desc": "Culte de monstres et de morts-vivants qui veut hâter la fusion des mondes."
+    },
+    {
+      "id": 2,
+      "key": "meutes_libres",
+      "name": "Meutes Libres",
+      "hq": "Sylvaneth",
+      "symbol": "Griffe ensanglantée sur lune noire",
+      "colors": ["#3f6b3a", "#6b4a2b", "#c9a227"],
+      "rivals": [3],
+      "perks": [
+        { "tier": "Friendly", "modifiers": [{ "stat": "MoveSpeedMult", "kind": "PercentAdd", "value": 0.03 }] },
+        { "tier": "Honored", "modifiers": [{ "stat": "CritChance", "kind": "Flat", "value": 0.02 }] },
+        { "tier": "Exalted", "modifiers": [{ "stat": "XpGainMult", "kind": "PercentAdd", "value": 0.05 }] }
+      ],
+      "desc": "Clans de Lychens et de Sang-Mêlés qui rejettent toute autorité."
+    },
+    {
+      "id": 3,
+      "key": "forgeurs",
+      "name": "Forgeurs de l'Apocalypse",
+      "hq": "Désert de Cendres",
+      "symbol": "Marteau brisé entouré de pièces d'or",
+      "colors": ["#b8923a", "#8a4b2a", "#1c1c1c"],
+      "rivals": [2],
+      "perks": [
+        { "tier": "Friendly", "modifiers": [{ "stat": "ManaCostMult", "kind": "PercentAdd", "value": -0.05 }] },
+        { "tier": "Honored", "modifiers": [{ "stat": "DamageMult", "kind": "PercentAdd", "value": 0.05 }] },
+        { "tier": "Exalted", "modifiers": [{ "stat": "MimicCostMult", "kind": "PercentAdd", "value": -0.1 }] }
+      ],
+      "desc": "Guilde marchande et mercenaire : le profit avant tout."
+    }
+  ]
+}
