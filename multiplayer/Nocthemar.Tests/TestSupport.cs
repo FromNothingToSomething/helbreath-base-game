@@ -21,6 +21,9 @@ internal static class TestSupport {
     /// <summary>The shipped Config/Nocthemar/Mimic.json validated against <see cref="ShippedClasses"/>.</summary>
     public static MimicConfig ShippedMimic() => MimicConfig.LoadAsync(ShippedClasses(), Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Mimic.json")).GetAwaiter().GetResult();
 
+    /// <summary>The shipped Config/Nocthemar/Factions.json (linked into the test output).</summary>
+    public static FactionConfig ShippedFactions() => FactionConfig.LoadAsync(Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Factions.json")).GetAwaiter().GetResult();
+
     /// <summary>The shipped classes and skills with the given handlers (none by default: every shipped skill is a catalog entry or a stat passive).</summary>
     public static NocContent ShippedContent(SkillHandlerRegistry? handlers = null) =>
         new(ShippedClasses(), ShippedSkills(), Progression(), handlers ?? BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), ShippedMimic(), BuiltinMimicHandlers.Register(new MimicHandlerRegistry()));

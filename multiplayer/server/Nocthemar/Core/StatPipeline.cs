@@ -49,11 +49,13 @@ public enum StatId : byte {
     MimicCostMult = 20,
     // consumer: module 4 (T62, 1 = the character captures essences without an Essence Vial; base 0, Flat modifiers)
     EssenceCapture = 21,
+    // consumer: module 5 (T74, scales the positive reputation a character earns; ReputationService)
+    ReputationGainMult = 22,
 }
 
 /// <summary>Number of <see cref="StatId"/> members (ids are contiguous from 0); keep equal to the last id + 1.</summary>
 public static class StatIds {
-    public const int Count = 22;
+    public const int Count = 23;
 }
 
 /// <summary>How a <see cref="StatModifier"/> combines with the base value.</summary>
@@ -228,6 +230,7 @@ public sealed class StatPipeline {
         foreach (var stat in new[] {
             StatId.DamageMult, StatId.MagicDamageMult, StatId.ArmorMult, StatId.CritDamageMult, StatId.MoveSpeedMult,
             StatId.HealReceivedMult, StatId.XpGainMult, StatId.ManaCostMult, StatId.MimicDurationMult, StatId.MimicPowerMult, StatId.MimicCostMult,
+            StatId.ReputationGainMult,
         }) {
             bases[(int)stat] = 1.0;
         }

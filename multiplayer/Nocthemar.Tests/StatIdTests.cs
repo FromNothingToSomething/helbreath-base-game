@@ -14,7 +14,7 @@ public class StatIdTests {
         ["MagicDamageMult"] = 4, ["ArmorMult"] = 5, ["ResistPhysical"] = 6, ["ResistMagic"] = 7, ["ResistCurse"] = 8,
         ["ResistDeath"] = 9, ["CritDamageMult"] = 10, ["MoveSpeedMult"] = 11, ["HealReceivedMult"] = 12,
         ["XpGainMult"] = 13, ["ManaCostMult"] = 14, ["MimicDurationMult"] = 15, ["CritChance"] = 16, ["HpRegen"] = 17,
-        ["MimicSlots"] = 18, ["MimicPowerMult"] = 19, ["MimicCostMult"] = 20, ["EssenceCapture"] = 21,
+        ["MimicSlots"] = 18, ["MimicPowerMult"] = 19, ["MimicCostMult"] = 20, ["EssenceCapture"] = 21, ["ReputationGainMult"] = 22,
     };
 
     [Fact]
@@ -39,7 +39,7 @@ public class StatIdTests {
         var p = Create();
         var multipliers = new[] {
             StatId.MagicDamageMult, StatId.ArmorMult, StatId.CritDamageMult, StatId.MoveSpeedMult,
-            StatId.HealReceivedMult, StatId.XpGainMult, StatId.ManaCostMult, StatId.MimicDurationMult, StatId.MimicPowerMult, StatId.MimicCostMult,
+            StatId.HealReceivedMult, StatId.XpGainMult, StatId.ManaCostMult, StatId.MimicDurationMult, StatId.MimicPowerMult, StatId.MimicCostMult, StatId.ReputationGainMult,
         };
         var fractions = new[] { StatId.ResistPhysical, StatId.ResistMagic, StatId.ResistCurse, StatId.ResistDeath };
 
