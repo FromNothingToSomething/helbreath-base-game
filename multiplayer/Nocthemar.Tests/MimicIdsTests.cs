@@ -56,7 +56,7 @@ public class MimicIdsTests {
         Assert.Equal(19, (int)StatId.MimicPowerMult);
         Assert.Equal(20, (int)StatId.MimicCostMult);
         Assert.Equal(21, (int)StatId.EssenceCapture);
-        Assert.Equal(22, StatIds.Count);
+        Assert.Equal(Enum.GetValues<StatId>().Length, StatIds.Count); // follows the enum: StatIdTests freezes the ids and the total
         Assert.Equal(0.0, p.Get(StatId.EssenceCapture));
         Assert.Equal(0.0, p.Get(StatId.MimicSlots));
         Assert.Equal(1.0, p.Get(StatId.MimicPowerMult));
