@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ClientMessage, InitialState, ServerMessage } from '../../multiplayer/mp-client/src/proto/generated/network';
 import { NocCatalog, NocSnapshot } from '../../multiplayer/mp-client/src/proto/generated/nocthemar';
+import { makeNocSnapshot } from './support';
 import {
     branchSkills,
     classById,
@@ -28,7 +29,7 @@ const skill = (id: number, branch: number, slot: number, over: Record<string, un
     ...over,
 });
 
-const catalog = (): NocCatalog => ({
+const catalog = (): NocCatalog => NocCatalog.fromPartial({
     classes: [
         { id: 0, key: 'knight', name: 'Chevalier', role: 'tank', branches: [{ id: 0, key: 'a', name: 'A', role: '' }], recommendedRaceIds: [0, 2] },
         { id: 1, key: 'singer', name: 'Chanteur', role: 'support', branches: [], recommendedRaceIds: [1] },
@@ -95,7 +96,7 @@ test('only two branches can be combined', () => {
 });
 
 test('snapshot class, points and skills reach the view model', () => {
-    const snapshot: NocSnapshot = { level: 5, xp: 0n, xpToNext: 10n, mana: 1, maxMana: 2, raceId: 1, classId: 2, skillPoints: 3, skills: [1000, 1010] };
+    const snapshot = makeNocSnapshot({ level: 5, xp: 0n, xpToNext: 10n, mana: 1, maxMana: 2, raceId: 1, classId: 2, skillPoints: 3, skills: [1000, 1010] });
     const decoded = NocSnapshot.decode(NocSnapshot.encode(snapshot).finish());
     const view = toNocViewModel(decoded);
 

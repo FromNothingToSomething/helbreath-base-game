@@ -5,8 +5,9 @@ import { test } from 'node:test';
 import { toNocViewModel } from '../../multiplayer/mp-client/src/utils/NocView';
 import { ClientMessage, InitialState, PlayerEnteredRange, ServerMessage } from '../../multiplayer/mp-client/src/proto/generated/network';
 import { NocSnapshot } from '../../multiplayer/mp-client/src/proto/generated/nocthemar';
+import { makeNocSnapshot } from './support';
 
-const snapshot = (over: Partial<NocSnapshot> = {}): NocSnapshot => ({
+const snapshot = (over: Partial<NocSnapshot> = {}): NocSnapshot => makeNocSnapshot({
     level: 7,
     xp: 250n,
     xpToNext: 1000n,
