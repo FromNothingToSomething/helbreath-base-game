@@ -543,7 +543,7 @@
     "map": "bsmith_1",
     "music": "aresden.mp3",
     "workerThread": 0,
-    "npcs": [{ "npcId": 3, "x": 48, "y": 33, "direction": 7 }, { "npcId": 10, "x": 49, "y": 33, "direction": 7 }]
+    "npcs": [{ "npcId": 3, "x": 48, "y": 33, "direction": 7 }, { "npcId": 10, "x": 49, "y": 33, "direction": 7 }, { "npcId": 11, "x": 50, "y": 33, "direction": 7 }, { "npcId": 12, "x": 51, "y": 33, "direction": 7 }, { "npcId": 13, "x": 52, "y": 33, "direction": 7 }, { "npcId": 14, "x": 53, "y": 33, "direction": 7 }]
   },
   {
     "id": "arewrus",
@@ -600,7 +600,7 @@
     "map": "bsmith_1",
     "music": "elvine.mp3",
     "workerThread": 0,
-    "npcs": [{ "npcId": 3, "x": 48, "y": 33, "direction": 7 }, { "npcId": 10, "x": 49, "y": 33, "direction": 7 }]
+    "npcs": [{ "npcId": 3, "x": 48, "y": 33, "direction": 7 }, { "npcId": 10, "x": 49, "y": 33, "direction": 7 }, { "npcId": 11, "x": 50, "y": 33, "direction": 7 }, { "npcId": 12, "x": 51, "y": 33, "direction": 7 }, { "npcId": 13, "x": 52, "y": 33, "direction": 7 }, { "npcId": 14, "x": 53, "y": 33, "direction": 7 }]
   },
   {
     "id": "elvwrus",

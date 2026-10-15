@@ -6,10 +6,10 @@ public static class SoulForge {
     public const int NpcCatalogId = 10;
 
     /// <summary>Largest Chebyshev distance, in cells, between the player and the forge NPC.</summary>
-    public const int RangeCells = 3;
+    public const int RangeCells = NpcInteraction.DefaultRangeCells;
 
     public const string NoForgeInRange = "No Soul Forge in range.";
 
     public static bool IsInRange(int playerX, int playerY, int npcX, int npcY) =>
-        Math.Max(Math.Abs(playerX - npcX), Math.Abs(playerY - npcY)) <= RangeCells;
+        NpcInteraction.IsInRange(playerX, playerY, npcX, npcY, RangeCells);
 }

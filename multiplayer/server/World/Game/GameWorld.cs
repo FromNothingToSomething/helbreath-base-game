@@ -237,7 +237,7 @@ public sealed class GameWorld : IWorkerWorld {
             essenceDropper = new EssenceDropper(mimicService.Config, essenceRoll ?? Random.Shared.NextDouble);
         }
 
-        nocDispatcher = new NocDispatcher(settings.Nocthemar?.Debug ?? false, soulForgeInRange: IsSoulForgeInRange, factionChanged: BroadcastFactionChanged);
+        nocDispatcher = new NocDispatcher(settings.Nocthemar?.Debug ?? false, soulForgeInRange: IsSoulForgeInRange, factionMasterInRange: IsFactionMasterInRange, factionChanged: BroadcastFactionChanged);
         this.monsterCatalog = monsterCatalog;
         this.monstersById = monstersById;
         this.spellsById = spellsById;
@@ -1301,6 +1301,22 @@ public sealed class GameWorld : IWorkerWorld {
     private bool IsSoulForgeInRange(GameWorldPlayer player) {
         foreach (var npc in npcsByNpcId.Values) {
             if (npc.CatalogNpcId == SoulForge.NpcCatalogId && SoulForge.IsInRange(player.PosX, player.PosY, npc.PosX, npc.PosY)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>True when the master NPC of <paramref name="factionId"/> in this world stands within range of the player.</summary>
+    private bool IsFactionMasterInRange(GameWorldPlayer player, int factionId) {
+        if (!FactionMaster.IsValidFaction(factionId)) {
+            return false;
+        }
+
+        var catalogId = FactionMaster.NpcCatalogIdOf(factionId);
+        foreach (var npc in npcsByNpcId.Values) {
+            if (npc.CatalogNpcId == catalogId && FactionMaster.IsInRange(player.PosX, player.PosY, npc.PosX, npc.PosY)) {
                 return true;
             }
         }

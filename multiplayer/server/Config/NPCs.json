@@ -9,5 +9,9 @@
   { "id": 7, "name": "McGaffin" },
   { "id": 8, "name": "Perry" },
   { "id": 9, "name": "Devlin" },
-  { "id": 10, "name": "Forge d'Âmes" }
+  { "id": 10, "name": "Forge d'Âmes" },
+  { "id": 11, "name": "Maître du Chant de Fer" },
+  { "id": 12, "name": "Maître du Chœur Abyssal" },
+  { "id": 13, "name": "Maître des Meutes Libres" },
+  { "id": 14, "name": "Maître des Forgeurs" }
 ]

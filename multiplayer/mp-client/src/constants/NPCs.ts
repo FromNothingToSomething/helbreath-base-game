@@ -13,6 +13,10 @@ export const NPC_SPRITE_NAMES: readonly string[] = [
     'perry',
     'devlin',
     'gandlf', // 10: Forge d'Âmes (provisional sprite, shared with Gandalf)
+    'gail', // 11: Maître du Chant de Fer (provisional sprite)
+    'mcgaffin', // 12: Maître du Chœur Abyssal (provisional sprite)
+    'perry', // 13: Maître des Meutes Libres (provisional sprite)
+    'kennedy', // 14: Maître des Forgeurs (provisional sprite)
 ];
 
 /**
