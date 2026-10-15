@@ -83,9 +83,10 @@ public class EssenceDropperTests {
 
     [Fact]
     public void Every_non_mythic_monster_ability_can_drop_outside_a_raid_and_has_an_essence_item() {
-        var dropper = Dropper(() => 0.0);
+        var mimic = Shipped();
+        var dropper = new EssenceDropper(mimic, () => 0.0);
 
-        foreach (var ability in Shipped().Abilities.Where(a => !a.IsFusion)) {
+        foreach (var ability in mimic.Abilities.Where(a => !a.IsFusion)) {
             var dropped = dropper.Roll(ability.MonsterId!.Value, raidWorld: false);
             if (ability.RequiresRaid) {
                 Assert.Null(dropped);

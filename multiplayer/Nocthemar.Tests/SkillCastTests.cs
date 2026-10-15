@@ -103,9 +103,12 @@ public class SkillCastTests {
     public void The_cast_messages_route_class_skills_and_leave_legacy_spells_alone() {
         var casting = File.ReadAllText(Path.Combine(FindServer(), "Helpers", "Casting.cs"));
 
-        Assert.Contains("request.SpellId >= SkillIds.Base", casting);
-        Assert.Contains("player.RequestedSpellId.Value >= SkillIds.Base", casting);
+        Assert.Contains("CastRouting.Of(request.SpellId)", casting);
+        Assert.Contains("CastRouting.Of(player.RequestedSpellId.Value)", casting);
         Assert.Contains("TryBeginSkillCast(skillId, nowMs)", casting);
+        Assert.Equal(CastRoute.Spell, CastRouting.Of(SkillIds.Base - 1));
+        Assert.Equal(CastRoute.Skill, CastRouting.Of(SkillIds.Base));
+        Assert.Equal(CastRoute.Mimic, CastRouting.Of(MimicIds.Base));
     }
 
     private static string FindServer() {
