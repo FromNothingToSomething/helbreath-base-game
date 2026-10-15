@@ -32,9 +32,13 @@ public static class Casting {
         if (player.IsDead) {
             return;
         }
-        if (request.SpellId >= SkillIds.Base) {
-            StartSkillCast(wr, player, request.SpellId);
-            return;
+        switch (CastRouting.Of(request.SpellId)) {
+            case CastRoute.Mimic:
+                StartMimicCast(wr, player, request.SpellId);
+                return;
+            case CastRoute.Skill:
+                StartSkillCast(wr, player, request.SpellId);
+                return;
         }
 
         if (!spellsById.TryGetValue(request.SpellId, out var spell)) {
@@ -80,6 +84,69 @@ public static class Casting {
         var startedMessage = NetworkManager.CreateSpellCastStarted(player.PlayerId, player.FindLearnedSkill(skillId)!.Name, player.CastSpeedMs);
         foreach (var nearbyPlayer in wr.PlayerSpatialGrid.GetNearbyPlayers(player.PosX, player.PosY, player.SessionId)) {
             NetworkManager.SendToPlayer(nearbyPlayer, startedMessage);
+        }
+    }
+
+    /// <summary>Mimicry abilities (id >= <see cref="MimicIds.Base"/>) are cast through the spell messages like skills: the start request validates the ability without spending anything.</summary>
+    private static void StartMimicCast(GameWorldRef wr, GameWorldPlayer player, int abilityId) {
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var refusal = player.MimicCastRefusal(abilityId, nowMs);
+        if (refusal is not null || !player.TryGetMimicAbility(abilityId, out var ability)) {
+            RefuseSkillCast(player, refusal ?? "Unknown ability.");
+            return;
+        }
+
+        if (player.SpawnProtection) {
+            Spawn.DisableSpawnProtectionAndNotify(wr, player);
+        }
+
+        TemporaryEffects.BreakInvisibilityIfPresent(wr, player);
+        player.SetRequestedSpellId(abilityId);
+        player.RecordSpellCastStartTimeMs(nowMs);
+        var startedMessage = NetworkManager.CreateSpellCastStarted(player.PlayerId, ability.Name, player.CastSpeedMs);
+        foreach (var nearbyPlayer in wr.PlayerSpatialGrid.GetNearbyPlayers(player.PosX, player.PosY, player.SessionId)) {
+            NetworkManager.SendToPlayer(nearbyPlayer, startedMessage);
+        }
+    }
+
+    /// <summary>
+    /// Completes a mimicry cast: same timing rule as spells; an ability with a handler runs it (<see cref="GameWorldPlayer.TryBeginMimicCast"/>),
+    /// one that reuses a legacy spell resolves that spell at the requested target and is then charged (mana, cooldown, experience) only if it took effect.
+    /// A refusal is a <c>NocActionRefused</c> followed by a <c>SpellCastFailed</c>.
+    /// </summary>
+    private static void CastMimic(GameWorldRef wr, string worldIdForLogging, IReadOnlyDictionary<int, SpellConfig> spellsById, GameWorldPlayer player, SpellCastRequest request) {
+        var abilityId = player.RequestedSpellId!.Value;
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        if (player.IsSpellCastTimingViolation(nowMs, out _, out _)) {
+            RefuseSkillCast(player, "Cast too quick.");
+            return;
+        }
+
+        var refusal = player.MimicCastRefusal(abilityId, nowMs);
+        if (refusal is not null || !player.TryGetMimicAbility(abilityId, out var ability)) {
+            RefuseSkillCast(player, refusal ?? "Unknown ability.");
+            return;
+        }
+
+        if (ability.Handler is not null) {
+            player.ClearRequestedSpell();
+            refusal = player.TryBeginMimicCast(abilityId, nowMs);
+            if (refusal is not null) {
+                RefuseSkillCast(player, refusal);
+                return;
+            }
+
+            TemporaryEffects.BreakInvisibilityIfPresent(wr, player);
+            return;
+        }
+
+        if (ability.SpellId is not int spellId || !spellsById.TryGetValue(spellId, out var spell)) {
+            RefuseSkillCast(player, "This ability cannot be cast.");
+            return;
+        }
+
+        if (ResolveSpell(wr, worldIdForLogging, player, spell, request)) {
+            player.CommitMimicCast(ability, nowMs);
         }
     }
 
@@ -138,9 +205,13 @@ public static class Casting {
             NetworkManager.SendToPlayer(player, NetworkManager.CreateSpellCastFailed());
             return;
         }
-        if (player.RequestedSpellId.Value >= SkillIds.Base) {
-            CastSkill(wr, player);
-            return;
+        switch (CastRouting.Of(player.RequestedSpellId.Value)) {
+            case CastRoute.Mimic:
+                CastMimic(wr, worldIdForLogging, spellsById, player, request);
+                return;
+            case CastRoute.Skill:
+                CastSkill(wr, player);
+                return;
         }
 
         if (!spellsById.TryGetValue(player.RequestedSpellId.Value, out var spell)) {
@@ -160,6 +231,14 @@ public static class Casting {
             return;
         }
 
+        ResolveSpell(wr, worldIdForLogging, player, spell, request);
+    }
+
+    /// <summary>
+    /// Resolves a legacy spell at the requested target (aim assist, camera range, then the damage / buff / ground-effect effect of its type).
+    /// Shared by spell casts and by mimicry abilities that run a spell. False when the cast was aborted before taking effect (target out of range).
+    /// </summary>
+    private static bool ResolveSpell(GameWorldRef wr, string worldIdForLogging, GameWorldPlayer player, SpellConfig spell, SpellCastRequest request) {
         var targetX = request.X;
         var targetY = request.Y;
         TryApplySpellAimAssist(wr, player, spell, request, ref targetX, ref targetY);
@@ -170,7 +249,7 @@ public static class Casting {
                 $"[GameWorld:{worldIdForLogging}] Spell cast target out of camera range: player {player.PlayerId} target=({targetX},{targetY}) pos=({player.PosX},{player.PosY}) cameraRadius=({settings.Radius.CameraRadiusX},{settings.Radius.CameraRadiusY}).");
             NetworkManager.SendToPlayer(player, NetworkManager.CreateSpellCastFailed());
             player.ClearRequestedSpell();
-            return;
+            return false;
         }
 
         player.ClearRequestedSpell();
@@ -209,7 +288,7 @@ public static class Casting {
             }
 
             TemporaryEffects.ResolveBuffSpellAtCell(wr, player, spell, targetX, targetY);
-            return;
+            return true;
         }
 
         switch (spell.DamageType!.Value) {
@@ -318,6 +397,8 @@ public static class Casting {
                 ApplyGroundEffectSpell(wr, player, targetX, targetY, spell);
                 break;
         }
+
+        return true;
     }
 
     /// <summary>When the spell supports aim assist and the request includes a resolvable id, replaces the cast grid cell with that entity's position.</summary>

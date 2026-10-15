@@ -23,7 +23,7 @@ internal static class TestSupport {
 
     /// <summary>The shipped classes and skills with the given handlers (none by default: every shipped skill is a catalog entry or a stat passive).</summary>
     public static NocContent ShippedContent(SkillHandlerRegistry? handlers = null) =>
-        new(ShippedClasses(), ShippedSkills(), Progression(), handlers ?? BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), ShippedMimic());
+        new(ShippedClasses(), ShippedSkills(), Progression(), handlers ?? BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), ShippedMimic(), BuiltinMimicHandlers.Register(new MimicHandlerRegistry()));
 
     /// <summary>Loads a NOCTHEMAR block into a player the way a login does.</summary>
     public static void Restore(GameWorldPlayer player, NocState noc) {
@@ -42,7 +42,18 @@ internal static class TestSupport {
     public static RaceConfig ShippedRaces() => RaceConfig.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Config", "Nocthemar", "Races.json")));
 
     /// <summary>A player outside any world, spawned with the level-1 defaults; messages sent to it are appended to <paramref name="sent"/> when given.</summary>
-    public static GameWorldPlayer NewPlayer(List<ServerMessage>? sent = null, RaceConfig? races = null, NocContent? content = null) {
+    /// <summary>The essence items of the shipped mimicry catalog, the Essence Vial and nothing else: a bag catalog for players that carry essences.</summary>
+    public static IReadOnlyDictionary<int, ItemConfig> EssenceItems() {
+        var items = new Dictionary<int, ItemConfig>();
+        foreach (var ability in ShippedMimic().Abilities.Where(a => a.EssenceItemId is not null)) {
+            items[ability.EssenceItemId!.Value] = new ItemConfig(ability.EssenceItemId.Value, "Essence: " + ability.Name, "misc", Stackable: true);
+        }
+
+        items[MimicIds.EssenceVialItemId] = new ItemConfig(MimicIds.EssenceVialItemId, "Fiole d'Essence", "misc", Stackable: true);
+        return items;
+    }
+
+    public static GameWorldPlayer NewPlayer(List<ServerMessage>? sent = null, RaceConfig? races = null, NocContent? content = null, IReadOnlyDictionary<int, ItemConfig>? items = null) {
         Action<ServerMessage> send = sent is null ? Discard : sent.Add;
         var player = new GameWorldPlayer(
             Guid.NewGuid(),
@@ -50,7 +61,7 @@ internal static class TestSupport {
             _ => { },
             _ => { },
             () => { },
-            new Dictionary<int, ItemConfig>(),
+            items ?? new Dictionary<int, ItemConfig>(),
             new MovementSpeedViolationCheckConfig(false, 5, 20, 20, 10, 50),
             20,
             0.05,

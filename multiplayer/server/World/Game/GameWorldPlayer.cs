@@ -53,6 +53,10 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
     private readonly SkillService? skillService;
     /// <summary>Mimicry rules; null when the world has no mimicry catalog.</summary>
     private readonly MimicService? mimicService;
+    /// <summary>Handlers of the mimicry abilities; null together with <see cref="mimicService"/>.</summary>
+    private readonly MimicHandlerRegistry? mimicHandlers;
+    /// <summary>Unix ms at which each mimicry ability can be cast again.</summary>
+    private readonly Dictionary<int, long> mimicReadyAtMs = [];
     /// <summary>Applies the learned skills to <see cref="stats"/> and the hook table; null together with <see cref="skillService"/>.</summary>
     private readonly SkillEffects? skillEffects;
     /// <summary>Race whose modifiers are currently in <see cref="stats"/> (source <c>ModifierSources.Race</c>); never null after construction.</summary>
@@ -240,6 +244,7 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         if (nocContent is not null) {
             skillService = nocContent.Rules;
             mimicService = nocContent.Mimic;
+            mimicHandlers = nocContent.MimicHandlers;
             NocCatalog = nocContent.Catalog;
             skillEffects = new SkillEffects(stats, new SkillHookTable(nocContent.Handlers));
         }
@@ -696,6 +701,158 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
             nocDirty = true;
         }
     }
+
+    /// <summary>True when a passive (<see cref="StatId.EssenceCapture"/>) lets the character pick up essence orbs without an Essence Vial.</summary>
+    public bool CanCaptureEssences => stats.Get(StatId.EssenceCapture) >= 1.0;
+
+    /// <summary>How an essence orb would be picked up now: the passive first (nothing spent), else one Essence Vial, else refused.</summary>
+    public EssenceCapture PlanEssenceCapture() =>
+        EssenceCaptureRules.Decide(CanCaptureEssences, inventoryManager.CountItem(MimicIds.EssenceVialItemId) > 0);
+
+    /// <summary>Mana a cast of <paramref name="ability"/> costs this player: <see cref="MimicAbility.ManaCost"/> x <see cref="StatId.MimicCostMult"/>, rounded half away from zero.</summary>
+    public int MimicManaCostOf(MimicAbility ability) {
+        ArgumentNullException.ThrowIfNull(ability);
+        return ability.ManaCost <= 0 ? 0 : (int)Math.Min(int.MaxValue, Math.Round(ability.ManaCost * stats.Get(StatId.MimicCostMult), MidpointRounding.AwayFromZero));
+    }
+
+    /// <summary>Power of a learned ability: its level multiplier x <see cref="StatId.MimicPowerMult"/>.</summary>
+    public double MimicPowerOf(int abilityId) => (mimicService?.PowerOf(noc, abilityId) ?? 1.0) * stats.Get(StatId.MimicPowerMult);
+
+    /// <summary>The catalog entry of a mimicry ability id; false without a mimicry catalog or for an unknown id.</summary>
+    public bool TryGetMimicAbility(int abilityId, out MimicAbility ability) {
+        ability = null!;
+        return mimicService is not null && mimicService.Config.TryGet(abilityId, out ability!);
+    }
+
+    /// <summary>Why <paramref name="abilityId"/> cannot be cast right now (nothing is changed), or null. Checked in this order: catalog, dead, unknown, not learned, class, not equipped, not castable yet, cooldown, mana.</summary>
+    public string? MimicCastRefusal(int abilityId, long nowMs) {
+        if (mimicService is null) {
+            return NoMimicContent;
+        }
+
+        if (IsDead) {
+            return "You are dead.";
+        }
+
+        if (!mimicService.Config.TryGet(abilityId, out var ability)) {
+            return "Unknown ability.";
+        }
+
+        if (!mimicService.IsLearned(noc, abilityId)) {
+            return "Ability not learned.";
+        }
+
+        if (!ability.AllowsClass(noc.ClassId)) {
+            return "This ability is reserved to another class.";
+        }
+
+        if (!mimicService.IsEquipped(noc, abilityId)) {
+            return "Ability not equipped.";
+        }
+
+        if (!ability.IsReady) {
+            return "This ability cannot be cast.";
+        }
+
+        if (mimicReadyAtMs.TryGetValue(abilityId, out var readyAt) && nowMs < readyAt) {
+            return "Ability is on cooldown.";
+        }
+
+        return mana < MimicManaCostOf(ability) ? "Not enough mana." : null;
+    }
+
+    /// <summary>Spends the mana, starts the cooldown and credits one cast of experience. Called once a mimicry cast has actually happened.</summary>
+    public void CommitMimicCast(MimicAbility ability, long nowMs) {
+        ArgumentNullException.ThrowIfNull(ability);
+        mana = Math.Max(0, mana - MimicManaCostOf(ability));
+        mimicReadyAtMs[ability.Id] = nowMs + Math.Max(0, ability.CooldownMs);
+        RegisterMimicCast(ability.Id);
+        nocDirty = true;
+    }
+
+    /// <summary>
+    /// Casts an equipped ability that has a handler: checks (see <see cref="MimicCastRefusal"/>), runs the handler, then <see cref="CommitMimicCast"/>.
+    /// A handler refusal spends nothing. An ability that runs a legacy spell has no handler: the world resolves the spell, then commits. Returns the refusal, or null on success.
+    /// </summary>
+    public string? TryBeginMimicCast(int abilityId, long nowMs, int? targetId = null) {
+        var refusal = MimicCastRefusal(abilityId, nowMs);
+        if (refusal is not null) {
+            return refusal;
+        }
+
+        var ability = mimicService!.Config.TryGet(abilityId, out var found) ? found : null;
+        if (ability?.Handler is null || mimicHandlers is null || !mimicHandlers.TryGet(ability.Handler, out var handler)) {
+            return "This ability must be cast at a target.";
+        }
+
+        var context = new MimicContext(
+            ability, mimicService.LevelOf(noc, abilityId), MimicPowerOf(abilityId), stats.Get(StatId.MimicDurationMult), SkillCasterId, targetId, nowMs, this);
+        var result = handler.Execute(context);
+        if (!result.Success) {
+            return result.Refusal ?? "The ability failed.";
+        }
+
+        CommitMimicCast(ability, nowMs);
+        return null;
+    }
+
+    /// <summary>
+    /// Forge, consume: learns the ability of an essence in the bag and removes that essence. Rules first (unknown, fusion-only, class, duplicate), then possession; nothing changes on a refusal.
+    /// <paramref name="inventory"/> is the bag delta the caller must send. Returns null on success, otherwise the reason.
+    /// </summary>
+    public string? ForgeConsume(int abilityId, out InventoryMutationResult? inventory) {
+        inventory = null;
+        if (mimicService is null) {
+            return NoMimicContent;
+        }
+
+        var result = mimicService.Consume(CreateNocState(), abilityId);
+        if (!result.Ok) {
+            return result.Refusal;
+        }
+
+        if (!inventoryManager.TryRemoveItemsById(MimicIds.EssenceItemId(abilityId), 1, out var removed)) {
+            return NoEssence;
+        }
+
+        noc = result.State;
+        nocDirty = true;
+        inventory = removed;
+        return null;
+    }
+
+    /// <summary>
+    /// Forge, fuse: learns the recipe's ability from two essences in the bag and removes both. The result obeys the same duplicate (one ability per monster) and class rules as consuming;
+    /// nothing is consumed on a refusal. <paramref name="inventory"/> is the bag delta the caller must send.
+    /// </summary>
+    public string? ForgeFuse(int essenceA, int essenceB, out InventoryMutationResult? inventory) {
+        inventory = null;
+        if (mimicService is null) {
+            return NoMimicContent;
+        }
+
+        var result = mimicService.Fuse(CreateNocState(), essenceA, essenceB);
+        if (!result.Ok) {
+            return result.Refusal;
+        }
+
+        var itemA = MimicIds.EssenceItemId(essenceA);
+        var itemB = MimicIds.EssenceItemId(essenceB);
+        if (inventoryManager.CountItem(itemA) < 1 || inventoryManager.CountItem(itemB) < 1) {
+            return NoEssence;
+        }
+
+        inventoryManager.TryRemoveItemsById(itemA, 1, out var removedA);
+        inventoryManager.TryRemoveItemsById(itemB, 1, out var removedB);
+        removedA.AddedToBag.AddRange(removedB.AddedToBag);
+        removedA.RemovedFromBagItemUids.AddRange(removedB.RemovedFromBagItemUids);
+        noc = result.State;
+        nocDirty = true;
+        inventory = removedA;
+        return null;
+    }
+
+    private const string NoEssence = "You do not have this essence.";
 
     private string? ApplyMimicAction(Func<MimicService, MimicActionResult> action) {
         if (mimicService is null) {
