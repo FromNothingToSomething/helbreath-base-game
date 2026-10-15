@@ -133,7 +133,24 @@ public class NocDispatcherClassTests {
     public void GameWorld_routes_the_new_payloads_to_the_dispatcher() {
         var source = File.ReadAllText(FindSource("World", "Game", "GameWorld.cs"));
 
-        Assert.Matches(@"case ClientMessage\.PayloadOneofCase\.NocChooseClassRequest:\s*case ClientMessage\.PayloadOneofCase\.NocLearnSkillRequest:\s*case ClientMessage\.PayloadOneofCase\.NocRespecRequest:\s*case ClientMessage\.PayloadOneofCase\.NocGrantXpRequest:\s*case ClientMessage\.PayloadOneofCase\.NocCreateItemRequest:\s*case ClientMessage\.PayloadOneofCase\.NocForgeConsumeRequest:\s*case ClientMessage\.PayloadOneofCase\.NocForgeFuseRequest:\s*case ClientMessage\.PayloadOneofCase\.NocMimicEquipRequest:\s*nocDispatcher\.Handle\(", source);
+        // The labels stacked right before `nocDispatcher.Handle(` are exactly the payloads the dispatcher owns (order does not matter).
+        var handle = source.IndexOf("nocDispatcher.Handle(", StringComparison.Ordinal);
+        Assert.True(handle > 0);
+        var routed = new HashSet<string>();
+        for (var end = handle; ;) {
+            var m = System.Text.RegularExpressions.Regex.Match(source[..end], @"case ClientMessage\.PayloadOneofCase\.(\w+):\s*$");
+            if (!m.Success) {
+                break;
+            }
+
+            routed.Add(m.Groups[1].Value);
+            end = m.Index;
+        }
+
+        var owned = Enum.GetValues<ClientMessage.PayloadOneofCase>().Where(NocDispatcher.Owns).Select(c => c.ToString()).ToHashSet();
+        Assert.Equal(owned.OrderBy(x => x), routed.OrderBy(x => x));
+        Assert.Contains("NocFactionJoinRequest", routed);
+        Assert.Contains("NocReputationAddRequest", routed);
     }
 
     [Fact]
