@@ -806,7 +806,8 @@ public record GameWorldConfig(
     int? WorkerThread = null,
     GameWorldTeleportConfig[]? TeleportLocs = null,
     GameWorldDwellAreaConfig[]? DwellAreas = null,
-    GameWorldNpcPlacementConfig[]? Npcs = null);
+    GameWorldNpcPlacementConfig[]? Npcs = null,
+    bool Raid = false);
 
 /// <summary>Thresholds for detecting impossibly fast movement and applying server-side paralysis.</summary>
 public record MovementSpeedViolationCheckConfig(bool Verbose, int Limit, int Window, int SegmentsPerWindow, int ParalysisDuration, int MaxPingVariance);

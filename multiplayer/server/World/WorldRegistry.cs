@@ -65,7 +65,8 @@ public sealed class WorldRegistry : IDisposable {
         IReadOnlyList<GameWorldDwellAreaConfig>? dwellAreas = null,
         IReadOnlyList<GameWorldTeleportSet>? teleportLocs = null,
         IReadOnlyList<GameWorldNpcPlacementConfig>? initialNpcs = null,
-        int? workerThread = null) {
+        int? workerThread = null,
+        bool raid = false) {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(occupancyTracker);
         ArgumentNullException.ThrowIfNull(monsterCatalog);
@@ -74,7 +75,7 @@ public sealed class WorldRegistry : IDisposable {
         ArgumentNullException.ThrowIfNull(itemsById);
         ArgumentNullException.ThrowIfNull(npcsById);
 
-        var world = new GameWorld(id, map, music, occupancyTracker, settings, monsterCatalog, monstersById, spellsById, itemsById, npcsById, progression, races, dwellAreas, teleportLocs, initialNpcs, nocContent);
+        var world = new GameWorld(id, map, music, occupancyTracker, settings, monsterCatalog, monstersById, spellsById, itemsById, npcsById, progression, races, dwellAreas, teleportLocs, initialNpcs, nocContent, raid);
         if (!gameWorldsById.TryAdd(id, world)) {
             throw new InvalidOperationException($"A game world with id '{id}' is already registered.");
         }
