@@ -1270,7 +1270,8 @@ public sealed class GameWorld : IWorkerWorld {
     }
 
     /// <summary>
-    /// Credits the killing blow of a player on a monster with its XP (<c>xp</c> in Monsters.json, else <c>defaultMonsterXp</c>), scaled by the killer's XP gain modifiers (race).
+    /// Credits the killing blow of a player on a monster with its XP (<c>xp</c> in Monsters.json, else <c>defaultMonsterXp</c>), scaled by the killer's XP gain modifiers (race),
+    /// and with the reputation of the monster's faction (<c>factionId</c>/<c>repOnKill</c>; only for a killer who joined a faction). Only the killer is credited.
     /// Called only from the player-attack paths in <see cref="Server.Helpers.Combat"/>: monster-vs-monster kills and the admin kill-all never reach it.
     /// </summary>
     public void OnMonsterKilledByPlayer(GameWorldPlayer killer, GameWorldMonster monster) {
@@ -1278,6 +1279,10 @@ public sealed class GameWorld : IWorkerWorld {
         ArgumentNullException.ThrowIfNull(monster);
         monstersById.TryGetValue(monster.CatalogMonsterId, out var monsterConfig);
         killer.RegisterKill();
+        if (monsterConfig?.FactionId is int monsterFactionId) {
+            killer.RegisterFactionKill(monsterFactionId, monsterConfig.RepOnKill);
+        }
+
         killer.GrantKillXp(progression.ResolveMonsterXp(monsterConfig?.Xp));
         DropEssence(monster);
     }

@@ -92,6 +92,15 @@ public static class Config {
             if (m.Xp is int xp && xp < 0) {
                 throw new InvalidOperationException($"Monsters.json entry at index {i} has negative xp ({xp}).");
             }
+            if (m.FactionId is int fid && fid < 0) {
+                throw new InvalidOperationException($"Monsters.json entry at index {i} has negative factionId ({fid}).");
+            }
+            if (m.RepOnKill is int rep && (rep < 0 || rep > MaxRepOnKill)) {
+                throw new InvalidOperationException($"Monsters.json entry at index {i} has repOnKill ({rep}) outside 0-{MaxRepOnKill}.");
+            }
+            if (m.RepOnKill is not null && m.FactionId is null) {
+                throw new InvalidOperationException($"Monsters.json entry at index {i} has repOnKill but no factionId.");
+            }
             if (m.ChaseDistance is int cd && cd < 0) {
                 throw new InvalidOperationException($"Monsters.json entry at index {i} has negative chaseDistance ({cd}).");
             }
@@ -167,6 +176,20 @@ public static class Config {
             .GroupBy(m => m.Sprite.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         return (bySprite, byId);
+    }
+
+    /// <summary>Highest <c>repOnKill</c> a monster may declare.</summary>
+    public const int MaxRepOnKill = 1000;
+
+    /// <summary>Ensures each monster <c>factionId</c> is a faction of <c>Factions.json</c>.</summary>
+    public static void ValidateMonsterFactionReferences(IReadOnlyDictionary<int, MonsterConfig> monstersById, FactionConfig factions) {
+        ArgumentNullException.ThrowIfNull(monstersById);
+        ArgumentNullException.ThrowIfNull(factions);
+        foreach (var monster in monstersById.Values) {
+            if (monster.FactionId is int factionId && !factions.Contains(factionId)) {
+                throw new InvalidOperationException($"Monsters.json entry id {monster.Id} references unknown factionId {factionId}.");
+            }
+        }
     }
 
     /// <summary>Ensures each monster <c>spells</c> entry references a defined spell and rejects <see cref="DamageType.GroundEffect"/> (monster ground effects are not implemented).</summary>
@@ -727,7 +750,11 @@ public record MonsterConfig(
     /// <summary>Optional AI spell list; each entry references <c>Spells.json</c> by id (ground-effect spells are rejected at startup).</summary>
     MonsterSpellEntry[]? Spells = null,
     /// <summary>XP granted to the player who lands the killing blow; when omitted uses <c>defaultMonsterXp</c> in <c>Config/Nocthemar/Progression.json</c>. Must be zero or greater.</summary>
-    int? Xp = null);
+    int? Xp = null,
+    /// <summary>Faction of the monster (<c>Factions.json</c> id); null = none. Killing it costs that faction reputation and pays its rivals, for a killer who joined a faction (JSON <c>factionId</c>).</summary>
+    int? FactionId = null,
+    /// <summary>Reputation of a kill, 0-1000; when omitted uses <c>reputation.killBase</c> in <c>Factions.json</c>. Needs <see cref="FactionId"/> (JSON <c>repOnKill</c>).</summary>
+    int? RepOnKill = null);
 
 /// <summary>Ranged vs melee for catalog <c>weaponType</c> (JSON and <see cref="Mmorpg.Network.ItemDirectoryEntry"/>).</summary>
 public enum ItemWeaponType {

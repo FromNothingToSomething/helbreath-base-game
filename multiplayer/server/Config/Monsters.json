@@ -52,13 +52,15 @@
     "id": 8,
     "name": "Battle Golem",
     "sprite": "bg",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 3
   },
   {
     "id": 9,
     "name": "Cannibal Plant",
     "sprite": "canplant",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 2
   },
   {
     "id": 10,
@@ -70,14 +72,16 @@
     "id": 11,
     "name": "Centaurus",
     "sprite": "centaurus",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 2
   },
   {
     "id": 12,
     "name": "Clay Golem",
     "sprite": "cla",
     "movementSpeed": 700,
-    "attackType": 3
+    "attackType": 3,
+    "factionId": 3
   },
   {
     "id": 13,
@@ -120,13 +124,17 @@
     "id": 17,
     "name": "Dark Shadow Knight",
     "sprite": "darkknight",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 1,
+    "repOnKill": 10
   },
   {
     "id": 18,
     "name": "Demon",
     "sprite": "demon",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 1,
+    "repOnKill": 10
   },
   {
     "id": 19,
@@ -138,25 +146,29 @@
     "id": 20,
     "name": "Frost",
     "sprite": "frost",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 2
   },
   {
     "id": 21,
     "name": "Gargoyle",
     "sprite": "gagoyle",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 1
   },
   {
     "id": 22,
     "name": "God's Hand Knight",
     "sprite": "ghk",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 0
   },
   {
     "id": 23,
     "name": "God's Hand Knight on Armored Battle Steed",
     "sprite": "ghkabs",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 0
   },
   {
     "id": 24,
@@ -192,7 +204,8 @@
     "maxIdleTime": 5000,
     "attackType": 1,
     "attackStunDuration": 200,
-    "hp": 30
+    "hp": 30,
+    "factionId": 2
   },
   {
     "id": 28,
@@ -210,7 +223,8 @@
     "maxIdleTime": 5000,
     "attackType": 3,
     "attackStunDuration": 200,
-    "hp": 30
+    "hp": 30,
+    "factionId": 3
   },
   {
     "id": 29,
@@ -246,25 +260,29 @@
         "spellId": 6,
         "castProbability": 0.5
       }
-    ]
+    ],
+    "factionId": 0
   },
   {
     "id": 32,
     "name": "Hellhound",
     "sprite": "helb",
-    "movementSpeed": 500
+    "movementSpeed": 500,
+    "factionId": 1
   },
   {
     "id": 33,
     "name": "Hellclaw",
     "sprite": "hellclaw",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 1
   },
   {
     "id": 34,
     "name": "Ice Golem",
     "sprite": "icegolem",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 2
   },
   {
     "id": 35,
@@ -342,7 +360,9 @@
     "id": 46,
     "name": "Lich",
     "sprite": "liche",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 1,
+    "repOnKill": 10
   },
   {
     "id": 47,
@@ -366,13 +386,15 @@
     "id": 50,
     "name": "Scorpion",
     "sprite": "scp",
-    "movementSpeed": 600
+    "movementSpeed": 600,
+    "factionId": 3
   },
   {
     "id": 51,
     "name": "Skeleton",
     "sprite": "ske",
-    "movementSpeed": 600
+    "movementSpeed": 600,
+    "factionId": 1
   },
   {
     "id": 52,
@@ -411,13 +433,15 @@
         "spellId": 22,
         "castProbability": 1
       }
-    ]
+    ],
+    "factionId": 1
   },
   {
     "id": 53,
     "name": "Stalker",
     "sprite": "stalker",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 1
   },
   {
     "id": 54,
@@ -435,13 +459,16 @@
     "id": 56,
     "name": "Temple Knight",
     "sprite": "tk",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 0
   },
   {
     "id": 57,
     "name": "Ancient Temple Knight",
     "sprite": "tpknight",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 0,
+    "repOnKill": 10
   },
   {
     "id": 58,
@@ -459,13 +486,15 @@
     "id": 60,
     "name": "Werewolf",
     "sprite": "werewolf",
-    "movementSpeed": 700
+    "movementSpeed": 700,
+    "factionId": 2
   },
   {
     "id": 61,
     "name": "Zombie",
     "sprite": "zom",
-    "movementSpeed": 220
+    "movementSpeed": 220,
+    "factionId": 1
   },
   {
     "id": 62,

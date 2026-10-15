@@ -61,6 +61,7 @@ var spellsConfig = await Config.LoadSpellsConfig();
 var (monsterCatalog, monstersById) = Config.BuildMonsterCatalog(monstersConfig);
 var spellsById = Config.BuildSpellCatalog(spellsConfig);
 Config.ValidateMonsterSpellReferences(monstersById, spellsById);
+Config.ValidateMonsterFactionReferences(monstersById, factionConfig);
 var itemsConfig = await Config.LoadItemsConfig();
 var itemsById = Config.BuildItemCatalog(itemsConfig);
 // Mimic.json is loaded early (the world registry needs it) and checked here, once the catalogs it points to exist.

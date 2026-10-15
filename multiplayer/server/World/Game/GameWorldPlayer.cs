@@ -622,6 +622,30 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
         skillEffects?.Hooks.Run(SkillHook.OnKill, SkillCasterId, null, 0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), actor: this);
     }
 
+    /// <summary>Id of the faction the character joined (<c>Factions.json</c>); null when none.</summary>
+    public int? FactionId => noc.FactionId;
+
+    /// <summary>Reputation with a faction; 0 when none was earned or the world has no faction catalog.</summary>
+    public int ReputationWith(int factionId) => reputationService?.ValueOf(noc, factionId) ?? 0;
+
+    /// <summary>
+    /// Applies the reputation of killing a monster of <paramref name="monsterFactionId"/> (the faction loses, its rivals gain, see <see cref="ReputationService.ApplyKill"/>);
+    /// nothing before the character has joined a faction. The gain is scaled by <see cref="StatId.ReputationGainMult"/>. Returns what moved.
+    /// </summary>
+    public IReadOnlyList<ReputationChange> RegisterFactionKill(int monsterFactionId, int? repOnKill) {
+        if (reputationService is null) {
+            return [];
+        }
+
+        var result = reputationService.ApplyKill(CreateNocState(), monsterFactionId, repOnKill, stats.Get(StatId.ReputationGainMult));
+        if (result.Changes.Count > 0) {
+            noc = noc with { Reputations = result.State.Reputations };
+            nocDirty = true;
+        }
+
+        return result.Changes;
+    }
+
     /// <summary>Chooses the class once. Returns null on success, otherwise the reason shown to the player.</summary>
     public string? TryChooseClass(int classId) {
         if (skillService is null) {
