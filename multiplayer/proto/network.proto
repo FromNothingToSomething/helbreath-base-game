@@ -101,6 +101,9 @@ message ClientMessage {
     NocLearnSkillRequest noc_learn_skill_request = 102;
     NocRespecRequest noc_respec_request = 103;
     NocCreateItemRequest noc_create_item_request = 104;
+    NocForgeConsumeRequest noc_forge_consume_request = 105;
+    NocForgeFuseRequest noc_forge_fuse_request = 106;
+    NocMimicEquipRequest noc_mimic_equip_request = 107;
   }
 }
 

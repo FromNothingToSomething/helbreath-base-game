@@ -23,6 +23,21 @@ message NocSnapshot {
   int32 skill_points = 8;
   // Ids of the learned skills (Skills.json), ascending.
   repeated int32 skills = 9;
+  // Learned mimicry abilities (Mimic.json ids), ascending; empty when none or when the world has no mimicry.
+  repeated NocMimicState mimics = 10;
+  // Equipped mimicry abilities in bar order (at most `mimic_slots`).
+  repeated int32 mimic_equipped = 11;
+  // Mimicry bar slots available now (level and passives); 0 when the world has no mimicry.
+  int32 mimic_slots = 12;
+}
+
+// One learned mimicry ability.
+message NocMimicState {
+  int32 id = 1;
+  // Total experience of the ability.
+  int64 xp = 2;
+  // 1..max level of the catalog's thresholds.
+  int32 level = 3;
 }
 
 // Sent once, inside AuthenticateRequest, to create a character. Ignored by the server when a save already exists for the id
@@ -62,6 +77,23 @@ message NocRespecRequest {
 message NocCreateItemRequest {
   int32 item_id = 1;
   int32 quantity = 2;
+}
+
+// Soul Forge, consume: learns the ability of an essence from the bag and removes the essence. Refused (NocActionRefused) when no Soul Forge is in range or a rule is not met.
+message NocForgeConsumeRequest {
+  int32 ability_id = 1;
+}
+
+// Soul Forge, fuse: two essences from the bag become the ability of their recipe. Same refusals as the consume request.
+message NocForgeFuseRequest {
+  int32 ability_a = 1;
+  int32 ability_b = 2;
+}
+
+// Puts a learned ability on the mimicry bar (`equipped` true) or takes it off. Needs no Soul Forge. Accepted: the next NocStateUpdated carries the new bar.
+message NocMimicEquipRequest {
+  int32 ability_id = 1;
+  bool equipped = 2;
 }
 
 // Sent to the sender only when a NOCTHEMAR request is refused; `reason` is a short English sentence meant to be shown to the player.
@@ -109,10 +141,49 @@ message NocSkillInfo {
   int32 prerequisite_id = 12;
 }
 
-// Static classes and skills, sent once at the first join of a session (not again on world transfers).
+// One mimicry ability of the catalog (a monster ability or a fusion result).
+message NocMimicInfo {
+  // 2000-2099 monster abilities, 2100-2199 fusion results.
+  int32 id = 1;
+  string key = 2;
+  string name = 3;
+  // 0 offensive, 1 defensive, 2 utility, 3 control, 4 ultimate.
+  int32 kind = 4;
+  // 0 common, 1 rare, 2 epic, 3 legendary, 4 mythic.
+  int32 rarity = 5;
+  // Name of the source monster; empty for a fusion result.
+  string monster_name = 6;
+  // Classes allowed to learn and equip it; empty = every class.
+  repeated int32 class_ids = 7;
+  // The essence only drops in raid worlds.
+  bool requires_raid = 8;
+  int32 cooldown_ms = 9;
+  int32 mana_cost = 10;
+  string desc = 11;
+  // False: listed but not castable yet.
+  bool ready = 12;
+  // Items.json id of the essence; 0 for a fusion result (it has no essence).
+  int32 essence_item_id = 13;
+}
+
+// Two monster abilities that fuse into a third; `a` is the lower id.
+message NocFusionInfo {
+  int32 a = 1;
+  int32 b = 2;
+  int32 result = 3;
+}
+
+// Static classes, skills and mimicry, sent once at the first join of a session (not again on world transfers).
 message NocCatalog {
   repeated NocClassInfo classes = 1;
   repeated NocSkillInfo skills = 2;
+  // Empty when the world has no mimicry catalog.
+  repeated NocMimicInfo mimics = 3;
+  repeated NocFusionInfo fusions = 4;
+  // Total ability experience needed for level i + 2; the maximum level is the count + 1.
+  repeated int64 mimic_xp_thresholds = 5;
+  // Power of an ability is 1 + this x (level - 1).
+  double mimic_power_per_level = 6;
 }
 
 // Self only. At most one per world tick and player (other state messages such as HpUpdated may accompany it); the state is the latest one at the end of that tick (last state wins).

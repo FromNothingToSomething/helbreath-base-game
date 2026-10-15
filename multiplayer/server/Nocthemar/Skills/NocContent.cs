@@ -19,7 +19,7 @@ public sealed class NocContent {
         Classes = classes;
         Skills = skills;
         Rules = new SkillService(classes, skills, progression);
-        Catalog = NocCatalogBuilder.Build(classes, skills, Rules);
+        Catalog = NocCatalogBuilder.Build(classes, skills, Rules, mimic);
         Mimic = mimic is null ? null : new MimicService(mimic);
         MimicHandlers = mimicHandlers ?? new MimicHandlerRegistry();
         if (mimic is not null) {

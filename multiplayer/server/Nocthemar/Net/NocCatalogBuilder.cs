@@ -6,7 +6,7 @@ namespace Server.Nocthemar.Net;
 
 /// <summary>Builds the wire form of the class and skill catalogs (<see cref="NocCatalog"/>), sent once per session in <c>InitialState</c>.</summary>
 public static class NocCatalogBuilder {
-    public static NocCatalog Build(ClassConfig classes, SkillConfig skills, SkillService rules) {
+    public static NocCatalog Build(ClassConfig classes, SkillConfig skills, SkillService rules, MimicConfig? mimic = null) {
         ArgumentNullException.ThrowIfNull(classes);
         ArgumentNullException.ThrowIfNull(skills);
         ArgumentNullException.ThrowIfNull(rules);
@@ -38,6 +38,38 @@ public static class NocCatalogBuilder {
             });
         }
 
+        if (mimic is not null) {
+            AddMimicry(catalog, mimic);
+        }
+
         return catalog;
+    }
+
+    private static void AddMimicry(NocCatalog catalog, MimicConfig mimic) {
+        foreach (var ability in mimic.Abilities) {
+            var info = new NocMimicInfo {
+                Id = ability.Id,
+                Key = ability.Key,
+                Name = ability.Name,
+                Kind = (int)ability.Kind,
+                Rarity = (int)ability.Rarity,
+                MonsterName = ability.MonsterName ?? "",
+                RequiresRaid = ability.RequiresRaid,
+                CooldownMs = ability.CooldownMs,
+                ManaCost = ability.ManaCost,
+                Desc = ability.Desc,
+                Ready = ability.IsReady,
+                EssenceItemId = ability.EssenceItemId ?? 0,
+            };
+            info.ClassIds.AddRange(ability.ClassIds);
+            catalog.Mimics.Add(info);
+        }
+
+        foreach (var fusion in mimic.Fusions) {
+            catalog.Fusions.Add(new NocFusionInfo { A = fusion.A, B = fusion.B, Result = fusion.Result });
+        }
+
+        catalog.MimicXpThresholds.AddRange(mimic.Xp.Thresholds.Select(t => (long)t));
+        catalog.MimicPowerPerLevel = mimic.Xp.PowerPerLevel;
     }
 }

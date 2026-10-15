@@ -1098,7 +1098,8 @@ public static class NetworkManager {
 
     public static NocSnapshot CreateNocSnapshot(
         int level, long xp, long xpToNext, int mana, int maxMana, int raceId = 0,
-        int? classId = null, int skillPoints = 0, IReadOnlyList<int>? skills = null) {
+        int? classId = null, int skillPoints = 0, IReadOnlyList<int>? skills = null,
+        IReadOnlyList<NocMimicState>? mimics = null, IReadOnlyList<int>? mimicEquipped = null, int mimicSlots = 0) {
         var snapshot = new NocSnapshot {
             Level = level,
             Xp = xp,
@@ -1115,6 +1116,16 @@ public static class NetworkManager {
         if (skills is not null) {
             snapshot.Skills.AddRange(skills);
         }
+
+        if (mimics is not null) {
+            snapshot.Mimics.AddRange(mimics);
+        }
+
+        if (mimicEquipped is not null) {
+            snapshot.MimicEquipped.AddRange(mimicEquipped);
+        }
+
+        snapshot.MimicSlots = mimicSlots;
 
         return snapshot;
     }

@@ -1013,7 +1013,23 @@ public class GameWorldPlayer : GameWorldActionableEntity, ISkillActor {
     public NocSnapshot CreateNocSnapshot() {
         NocSnapshotsBuilt++;
         progression.TryGetXpToNext(noc.Level, out var xpToNext);
-        return NetworkManager.CreateNocSnapshot(noc.Level, noc.Xp, xpToNext, mana, stats.MaxMana, race.Id, noc.ClassId, SkillPoints, noc.Skills);
+        return NetworkManager.CreateNocSnapshot(
+            noc.Level, noc.Xp, xpToNext, mana, stats.MaxMana, race.Id, noc.ClassId, SkillPoints, noc.Skills,
+            MimicStatesForSnapshot(), noc.MimicEquipped, MimicSlotLimit);
+    }
+
+    /// <summary>The learned abilities with their level, ascending by id; empty without a mimicry catalog or learned ability.</summary>
+    private List<NocMimicState> MimicStatesForSnapshot() {
+        var states = new List<NocMimicState>();
+        if (mimicService is null || noc.Mimics is not { Length: > 0 } learned) {
+            return states;
+        }
+
+        foreach (var entry in learned.OrderBy(e => e.Id)) {
+            states.Add(new NocMimicState { Id = entry.Id, Xp = entry.Xp, Level = mimicService.LevelOf(noc, entry.Id) });
+        }
+
+        return states;
     }
 
     /// <summary>
