@@ -41,11 +41,17 @@ public enum StatId : byte {
     CritChance = 16,
     // consumer: module 3 (T47, HP regained per second out of combat; the base is hp.regenPerSecond of Progression.json)
     HpRegen = 17,
+    // consumer: module 4 (T60, extra mimicry slots on top of the level table; base 0, Flat modifiers)
+    MimicSlots = 18,
+    // consumer: module 4 (T63, power of mimicry abilities)
+    MimicPowerMult = 19,
+    // consumer: module 4 (T63, mana cost of mimicry abilities)
+    MimicCostMult = 20,
 }
 
 /// <summary>Number of <see cref="StatId"/> members (ids are contiguous from 0); keep equal to the last id + 1.</summary>
 public static class StatIds {
-    public const int Count = 18;
+    public const int Count = 21;
 }
 
 /// <summary>How a <see cref="StatModifier"/> combines with the base value.</summary>
@@ -219,7 +225,7 @@ public sealed class StatPipeline {
         var bases = new double[StatCount];
         foreach (var stat in new[] {
             StatId.DamageMult, StatId.MagicDamageMult, StatId.ArmorMult, StatId.CritDamageMult, StatId.MoveSpeedMult,
-            StatId.HealReceivedMult, StatId.XpGainMult, StatId.ManaCostMult, StatId.MimicDurationMult,
+            StatId.HealReceivedMult, StatId.XpGainMult, StatId.ManaCostMult, StatId.MimicDurationMult, StatId.MimicPowerMult, StatId.MimicCostMult,
         }) {
             bases[(int)stat] = 1.0;
         }

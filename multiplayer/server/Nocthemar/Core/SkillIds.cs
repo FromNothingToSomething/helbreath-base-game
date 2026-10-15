@@ -6,6 +6,9 @@ namespace Server.Nocthemar.Core;
 /// </summary>
 public static class SkillIds {
     public const int Base = 1000;
+
+    /// <summary>First id after the class skills: ids from here up are mimicry abilities (<see cref="MimicIds"/>).</summary>
+    public const int End = MimicIds.Base;
     public const int MaxClasses = 10;
     public const int BranchesPerClass = 3;
     public const int SlotsPerBranch = 8;
