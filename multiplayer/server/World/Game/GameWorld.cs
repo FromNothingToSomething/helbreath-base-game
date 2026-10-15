@@ -1295,6 +1295,9 @@ public sealed class GameWorld : IWorkerWorld {
             killer.RegisterFactionKill(monsterFactionId, monsterConfig.RepOnKill);
         }
 
+        // Only the killer (the fatal blow) progresses a kill quest; there is no group share in module 5.
+        killer.RegisterQuestKill(monster.CatalogMonsterId);
+
         killer.GrantKillXp(progression.ResolveMonsterXp(monsterConfig?.Xp));
         DropEssence(monster);
     }
