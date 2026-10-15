@@ -118,10 +118,19 @@ public class MimicConfigTests {
         Assert.True(Enumerable.Range(2000, 22).SequenceEqual(cfg.Abilities.Where(a => !a.IsFusion).Select(a => a.Id)));
         Assert.True(Enumerable.Range(2100, 5).SequenceEqual(cfg.Abilities.Where(a => a.IsFusion).Select(a => a.Id)));
         Assert.Equal(22, cfg.Abilities.Select(a => a.MonsterId).Where(m => m is not null).Distinct().Count());
-        Assert.All(cfg.Abilities, a => {
-            Assert.True(a.CooldownMs >= MimicConfig.MinCooldownMs);
-            Assert.False(a.IsReady);
-        });
+        Assert.All(cfg.Abilities, a => Assert.True(a.CooldownMs >= MimicConfig.MinCooldownMs));
+    }
+
+    [Fact]
+    public void Shipped_catalog_has_16_castable_abilities_and_6_planned_monster_abilities() {
+        var cfg = Shipped();
+        var monster = cfg.Abilities.Where(a => !a.IsFusion).ToArray();
+
+        Assert.Equal(16, monster.Count(a => a.IsReady));
+        Assert.Equal(new[] { "chant_de_la_fin", "folie", "jugement", "morsure_infectee", "nuee", "putrefaction" }, monster.Where(a => !a.IsReady).Select(a => a.Key).Order().ToArray());
+        Assert.All(monster.Where(a => a.IsReady), a => Assert.True(a.Handler is not null ^ a.SpellId is not null));
+        Assert.All(cfg.Abilities.Where(a => a.IsFusion), a => Assert.False(a.IsReady));
+        Assert.Equal(new[] { "buff_black_shield", "buff_iron_skin" }, monster.Where(a => a.Handler is not null).Select(a => a.Handler!).Order().ToArray());
     }
 
     [Fact]
@@ -177,12 +186,13 @@ public class MimicConfigTests {
         cfg.ValidateSpells(spells);
         Assert.Equal(items.Count, items.Distinct().Count());
         Assert.Equal(22, items.Count(i => i >= MimicIds.EssenceItemBase && i < MimicIds.EssenceItemBase + MimicIds.MonsterCount));
+        Assert.Contains(MimicIds.EssenceVialItemId, items);
     }
 
     [Fact]
     public void Shipped_essence_items_are_stackable_misc_items() {
         var items = JsonSerializer.Deserialize<JsonArray>(File.ReadAllText(Config("Items.json")))!
-            .Where(i => i!["id"]!.GetValue<int>() >= MimicIds.EssenceItemBase).ToList();
+            .Where(i => i!["id"]!.GetValue<int>() is >= MimicIds.EssenceItemBase and < MimicIds.EssenceItemBase + MimicIds.MonsterCount).ToList();
 
         Assert.Equal(22, items.Count);
         Assert.All(items, i => {
@@ -198,8 +208,9 @@ public class MimicConfigTests {
 
         Assert.Contains("monster 0 is not in Monsters.json", Assert.Throws<InvalidOperationException>(() => cfg.ValidateMonsters(new Dictionary<int, string> { [1] = "Mbravo" })).Message);
         Assert.Contains("not 'Malpha'", Assert.Throws<InvalidOperationException>(() => cfg.ValidateMonsters(new Dictionary<int, string> { [0] = "Other", [1] = "Mbravo" })).Message);
-        Assert.Contains("essence item 5001 is missing", Assert.Throws<InvalidOperationException>(() => cfg.ValidateEssenceItems(new[] { 5000 })).Message);
-        cfg.ValidateEssenceItems(new[] { 5000, 5001 });
+        Assert.Contains("essence item 5001 is missing", Assert.Throws<InvalidOperationException>(() => cfg.ValidateEssenceItems(new[] { 5000, 5100 })).Message);
+        Assert.Contains("Essence Vial item 5100 is missing", Assert.Throws<InvalidOperationException>(() => cfg.ValidateEssenceItems(new[] { 5000, 5001 })).Message);
+        cfg.ValidateEssenceItems(new[] { 5000, 5001, 5100 });
         cfg.ValidateMonsters(new Dictionary<int, string> { [0] = "Malpha", [1] = "Mbravo" });
     }
 
@@ -310,6 +321,21 @@ public class MimicConfigTests {
         doc = ValidDoc();
         At(doc, 0)["handler"] = "do_it";
         Rejects(doc, "a planned ability has no handler");
+    }
+
+    [Fact]
+    public void A_ready_ability_with_only_a_spell_is_castable_and_a_ready_one_with_neither_is_not() {
+        var doc = ValidDoc();
+        At(doc, 0)["status"] = "ready";
+        Rejects(doc, "a ready ability needs a handler or a spellId");
+
+        At(doc, 0)["spellId"] = 21;
+        var cfg = MimicConfig.Parse(doc.ToJsonString(), OneClass());
+
+        Assert.True(cfg.TryGet(2000, out var a));
+        Assert.True(a.IsReady);
+        Assert.Null(a.Handler);
+        Assert.Equal(21, a.SpellId);
     }
 
     [Fact]

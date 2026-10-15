@@ -73,7 +73,8 @@
       "cooldownMs": 30000,
       "manaCost": 30,
       "desc": "Intangible 3s",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 24
     },
     {
       "id": 2003,
@@ -92,7 +93,8 @@
       "cooldownMs": 40000,
       "manaCost": 50,
       "desc": "+30% armure 10s",
-      "status": "planned"
+      "status": "ready",
+      "handler": "buff_iron_skin"
     },
     {
       "id": 2004,
@@ -110,7 +112,8 @@
       "cooldownMs": 40000,
       "manaCost": 50,
       "desc": "Aura de feu 8s",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 8
     },
     {
       "id": 2005,
@@ -126,7 +129,8 @@
       "cooldownMs": 40000,
       "manaCost": 50,
       "desc": "+30% vitesse attaque 10s",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 25
     },
     {
       "id": 2006,
@@ -142,7 +146,8 @@
       "cooldownMs": 30000,
       "manaCost": 30,
       "desc": "Immobilise 3s",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 3
     },
     {
       "id": 2007,
@@ -158,7 +163,8 @@
       "cooldownMs": 40000,
       "manaCost": 50,
       "desc": "Enracine ennemis",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 7
     },
     {
       "id": 2008,
@@ -190,7 +196,8 @@
       "cooldownMs": 40000,
       "manaCost": 50,
       "desc": "-20% stats ennemies",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 15
     },
     {
       "id": 2010,
@@ -206,7 +213,8 @@
       "cooldownMs": 60000,
       "manaCost": 80,
       "desc": "Attaque 3 fois",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 5
     },
     {
       "id": 2011,
@@ -222,7 +230,8 @@
       "cooldownMs": 40000,
       "manaCost": 50,
       "desc": "Gèle ennemis",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 10
     },
     {
       "id": 2012,
@@ -238,7 +247,8 @@
       "cooldownMs": 60000,
       "manaCost": 80,
       "desc": "Tempête de glace",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 21
     },
     {
       "id": 2013,
@@ -256,7 +266,8 @@
       "cooldownMs": 60000,
       "manaCost": 80,
       "desc": "Dégâts zone + peur",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 16
     },
     {
       "id": 2014,
@@ -272,7 +283,8 @@
       "cooldownMs": 60000,
       "manaCost": 80,
       "desc": "Dégâts sacrés",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 18
     },
     {
       "id": 2015,
@@ -290,7 +302,8 @@
       "cooldownMs": 40000,
       "manaCost": 50,
       "desc": "Absorbe 50% dégâts",
-      "status": "planned"
+      "status": "ready",
+      "handler": "buff_black_shield"
     },
     {
       "id": 2016,
@@ -306,7 +319,8 @@
       "cooldownMs": 60000,
       "manaCost": 80,
       "desc": "Météore",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 19
     },
     {
       "id": 2017,
@@ -322,7 +336,8 @@
       "cooldownMs": 30000,
       "manaCost": 30,
       "desc": "Poison + paralysie",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 4
     },
     {
       "id": 2018,
@@ -340,7 +355,8 @@
       "cooldownMs": 40000,
       "manaCost": 50,
       "desc": "Explosion de lave",
-      "status": "planned"
+      "status": "ready",
+      "spellId": 12
     },
     {
       "id": 2019,

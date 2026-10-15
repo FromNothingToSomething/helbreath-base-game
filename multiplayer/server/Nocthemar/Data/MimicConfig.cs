@@ -105,7 +105,7 @@ public sealed class MimicAbility {
 
     public string? Handler { get; }
 
-    /// <summary>False: listed but not castable yet (no handler).</summary>
+    /// <summary>False: listed but not castable yet. A ready ability has a <see cref="Handler"/> (preferred when both are set) or runs the legacy spell <see cref="SpellId"/>.</summary>
     public bool IsReady { get; }
 
     public string Desc { get; }
@@ -241,13 +241,16 @@ public sealed class MimicConfig {
         Throw("Mimic.json does not match Monsters.json", problems);
     }
 
-    /// <summary>Throws unless <c>Items.json</c> has the essence item of every monster ability.</summary>
+    /// <summary>Throws unless <c>Items.json</c> has the essence item of every monster ability and the Essence Vial.</summary>
     public void ValidateEssenceItems(IReadOnlyCollection<int> itemIds) {
         ArgumentNullException.ThrowIfNull(itemIds);
         var known = itemIds as ISet<int> ?? itemIds.ToHashSet();
-        Throw(
-            "Mimic.json does not match Items.json",
-            Abilities.Where(a => a.EssenceItemId is int item && !known.Contains(item)).Select(a => $"{a.Key}: essence item {a.EssenceItemId} is missing").ToList());
+        var problems = Abilities.Where(a => a.EssenceItemId is int item && !known.Contains(item)).Select(a => $"{a.Key}: essence item {a.EssenceItemId} is missing").ToList();
+        if (!known.Contains(MimicIds.EssenceVialItemId)) {
+            problems.Add($"Essence Vial item {MimicIds.EssenceVialItemId} is missing");
+        }
+
+        Throw("Mimic.json does not match Items.json", problems);
     }
 
     /// <summary>Throws when an ability reuses a legacy spell id that <c>Spells.json</c> does not have.</summary>
@@ -469,8 +472,8 @@ public sealed class MimicConfig {
         var ready = false;
         if (file.Status is "ready") {
             ready = true;
-            if (file.Handler is null) {
-                errors.Add($"{where}: a ready ability needs a handler");
+            if (file.Handler is null && file.SpellId is null) {
+                errors.Add($"{where}: a ready ability needs a handler or a spellId");
             }
         } else if (file.Status is "planned") {
             if (file.Handler is not null) {

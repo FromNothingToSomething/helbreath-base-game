@@ -3,7 +3,7 @@
 
 Usage: python3 gen_mimic.py [server_dir]   (default: multiplayer/server)
 Mimic.json is overwritten; Items.json is only appended to (essences already present are skipped), by text so the existing formatting is untouched.
-Every ability is "planned" (catalog entry, not castable) until its handler exists (module 4, T64/T65).
+An ability is "ready" when it has a handler (Skills/MimicHandlers.cs) or reuses a legacy Spells.json spell (spellId); everything else is "planned" (catalog entry, not castable).
 Rarity, class exclusivity, drop chance, cost and cooldown below are defaults to be tuned in the committed JSON.
 """
 import json, pathlib, re, sys
@@ -14,6 +14,14 @@ root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "multiplayer/server")
 DROP = {"common": 0.20, "rare": 0.10, "epic": 0.04, "legendary": 0.01, "mythic": 0.005}
 COOLDOWN = {"common": 30000, "rare": 40000, "epic": 60000, "legendary": 90000, "mythic": 180000}
 MANA = {"common": 30, "rare": 50, "epic": 80, "legendary": 120, "mythic": 200}
+
+# key -> ("handler", handler key) or ("spell", Spells.json id): the abilities that can be cast. Fusion results are all planned.
+READY = {
+ "peau_de_fer": ("handler", "buff_iron_skin"), "bouclier_noir": ("handler", "buff_black_shield"),
+ "traversee": ("spell", 24), "frenesie": ("spell", 25), "brasier": ("spell", 8), "toile": ("spell", 3), "racines": ("spell", 7),
+ "blizzard": ("spell", 21), "souffle_glacial": ("spell", 10), "pluie_de_feu": ("spell", 19), "eruption": ("spell", 12),
+ "lame_celeste": ("spell", 18), "cri_mortel": ("spell", 16), "dard": ("spell", 4), "trois_tetes": ("spell", 5), "malediction": ("spell", 15),
+}
 
 # (key, name, kind, rarity, monster id, Monsters.json name, class ids, description) in doc order = ability id 2000 + index
 A = [
@@ -50,9 +58,14 @@ F = [
 ]
 
 def ability(i, key, name, kind, rarity, mid, mname, classes, desc):
-    return {"id": 2000 + i, "key": key, "name": name, "kind": kind, "rarity": rarity, "monsterId": mid, "monsterName": mname,
-            "classIds": classes, "requiresRaid": rarity == "mythic", "dropChance": DROP[rarity], "cooldownMs": COOLDOWN[rarity],
-            "manaCost": MANA[rarity], "desc": desc, "status": "planned"}
+    a = {"id": 2000 + i, "key": key, "name": name, "kind": kind, "rarity": rarity, "monsterId": mid, "monsterName": mname,
+         "classIds": classes, "requiresRaid": rarity == "mythic", "dropChance": DROP[rarity], "cooldownMs": COOLDOWN[rarity],
+         "manaCost": MANA[rarity], "desc": desc, "status": "planned"}
+    ready = READY.get(key)
+    if ready:
+        a["status"] = "ready"
+        a["handler" if ready[0] == "handler" else "spellId"] = ready[1]
+    return a
 
 abilities = [ability(i, *a) for i, a in enumerate(A)]
 rank = ["common", "rare", "epic", "legendary", "mythic"]
@@ -73,6 +86,8 @@ items_path = root / "Config/Items.json"
 text = items_path.read_text(encoding="utf-8")
 have = {int(m) for m in re.findall(r'"id":\s*(\d+)', text)}
 new = [{"id": 5000 + i, "name": f"Essence: {a['name']}", "itemType": "misc", "stackable": True} for i, a in enumerate(abilities[:len(A)]) if 5000 + i not in have]
+if 5100 not in have:
+    new.append({"id": 5100, "name": "Fiole d'Essence", "itemType": "misc", "stackable": True})
 if new:
     body = text.rstrip()
     assert body.endswith("}\n]"), "unexpected Items.json ending"

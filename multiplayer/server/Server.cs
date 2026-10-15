@@ -43,7 +43,7 @@ var classSkills = await SkillConfig.LoadAsync(classes);
 classes.ValidateRaces(races);
 var mimicConfig = await MimicConfig.LoadAsync(classes);
 // Skill handlers are registered here; NocContent fails fast when a ready skill names a handler that is not.
-var nocContent = new NocContent(classes, classSkills, progression, BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), mimicConfig);
+var nocContent = new NocContent(classes, classSkills, progression, BuiltinSkillHandlers.Register(new SkillHandlerRegistry()), mimicConfig, BuiltinMimicHandlers.Register(new MimicHandlerRegistry()));
 var charsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Chars");
 // Fails fast on an unusable persistence.provider, before any world worker starts.
 var characterStore = CharacterStoreFactory.Create(settings.Persistence, charsDirectory, progression);
@@ -92,7 +92,8 @@ foreach (var gw in gameWorlds) {
         gw.DwellAreas,
         teleportLocs,
         gw.Npcs,
-        gw.WorkerThread);
+        gw.WorkerThread,
+        gw.Raid);
     Console.WriteLine($"[Server] Loaded game world '{gw.Id}' ({gw.Name}): map {gw.Map}, size {occupancyTracker.SizeX}x{occupancyTracker.SizeY}, {occupancyTracker.OccupiedCount} blocked cells, worker thread {world.WorkerThreadId}");
 }
 var globalWorld = worldRegistry.RegisterGlobalWorld(new GlobalWorld("global", settings), settings.Threads.GlobalWorldWorkerThread);
