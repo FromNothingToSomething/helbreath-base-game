@@ -361,7 +361,7 @@ public class MimicConfigTests {
     [Fact]
     public void Rejects_incoherent_fusion_recipes() {
         var doc = ValidDoc();
-        doc["fusions"]![0]!["b"] = 2000;
+        doc["fusions"]![0]!["a"] = 2000;
         Rejects(doc, "the two essences must differ");
 
         doc = ValidDoc();
